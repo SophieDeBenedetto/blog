@@ -3,8 +3,6 @@
 
 We can run our Elixir apps on a set of different nodes distributed across a single host or across multiple hosts. Elixir allows us to communicate across these nodes via a few different mechanisms which we will outline in this lesson.
 
-{% include toc.html %}
-
 ## Communication Between Nodes
 
 Elixir runs on the Erlang VM, which means it has access to to Erlang's powerful [distribution functionality.](http://erlang.org/doc/reference_manual/distributed.html)
