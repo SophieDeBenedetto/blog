@@ -61,12 +61,20 @@ The `--color` flag is important. Without it, we don't get that nice red/green co
 
 #### Bonus
 
-Typing this command every time we want to run a given child app's test is kind of a pain. We can define a mix alias to make our lives a little easier. A [mix alias](https://hexdocs.pm/mix/Mix.html#module-aliases) provides us a way to define a custom mix task that will only be available locally, _not_ in packaged versions of our application, i.e. not to devs who install our app as a dependency.
+Typing this command every time we want to run a given child app's tests is kind of a pain. We can define a mix alias to make our lives a little easier. A [mix alias](https://hexdocs.pm/mix/Mix.html#module-aliases) provides us a way to define a custom mix task that will only be available locally, _not_ in packaged versions of our application, i.e. not to devs who install our app as a dependency.
 
 We'll define a mix alias for our child app test command:
 
 ```elixir
 # mix.exs for root of umbrella app
+
+def project do
+    [
+      aliases: aliases(),
+      ...
+    ]
+  end
+
 def aliases do
   [
     child_app_name_test: "cmd --app child_app_name mix test --color"
@@ -74,8 +82,10 @@ def aliases do
 end
 ```
 
-Then from root of umbrella in terminal run:
+Then from root of umbrella app, we can run:
 
 ```bash
 mix child_app_name_test
 ```
+
+And that's it! A nice, easy-to-use command for running a child app's specs. You could define one such alias for each child app in your umbrella and run those tests with ease. 
