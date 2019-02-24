@@ -45,17 +45,19 @@ Not ideal.
 ### Like This
 After some googling around I eventually found a response by Jose Valim to a GitHub issue that pointed me in the right direction.
 
-To run the tests for just one specific child app, we can run the following from the room of the umbrella app:
-
-```elixir
-mix cmd --app child_app_name mix test test/child_app_name_test.exs --color
-```
-
-We use `mix cmd --app` to specific the app within which we want to run a given `mix` command. Then we specify the `mix test` command with the given spec we want to run. You could leave off the test file specification and run _all_ tests of a given child app like this:
+To run _all_ of the tests for just one specific child app, we can run the following from the room of the umbrella app:
 
 ```elixir
 mix cmd --app child_app_name mix test --color
 ```
+
+We use `mix cmd --app` to specific the app within which we want to run a given `mix` command. Then we specify the `mix test` command with the given spec we want to run. Additionally, we can specify a test file and even line number to run:
+
+```elixir
+mix cmd --app child_app_name mix test test/child_app_name_test.exs:8 --color
+```
+
+Where the `mix test` command is followed by the path to the test file you want to run, _from the root of that child app_.
 
 The `--color` flag is important. Without it, we don't get that nice red/green color highlighting, leaving our test output pretty hard to read.
 
@@ -88,4 +90,10 @@ Then from root of umbrella app, we can run:
 mix child_app_name_test
 ```
 
-And that's it! A nice, easy-to-use command for running a child app's specs. You could define one such alias for each child app in your umbrella and run those tests with ease. 
+Or, to run a specific test:
+
+```bash
+mix child_app_name_test test/child_app_name_test.exs:6
+```
+
+And that's it! A nice, easy-to-use command for running a child app's specs. You could define one such alias for each child app in your umbrella and run those tests with ease.
