@@ -10,7 +10,7 @@ Instead, [Jose Valim advocates](http://blog.plataformatec.com.br/2015/10/mocks-a
 
 > Mocks are simulated entities that mimic the behavior of real entities in controlled ways…I always consider “mock” to be a noun, never a verb.
 
-This reconceptualization has us identifying way to create a mock entity that our app is configured to use in the test environment, rather than writing code that performs a mock or stubbed function in a given test example.
+This reconceptualization forces us to create mock entities that our app is configured to use in the test environment, rather than writing code that performs a mock or stubbed function in a given test example.
 
 In our first attempt at applying this advice to tests for a GitHub client app that we built in Elixir, [we hand-rolled our own test server](https://medium.com/flatiron-labs/rolling-your-own-mock-server-for-testing-in-elixir-2cdb5ccdd1a0). Our test server acted as a stand-in for the GitHub API in our test environment and it implemented a controller that responded with the expected payloads under the given conditions. Our test server became our mock.  
 
@@ -18,28 +18,17 @@ This approach had the drawback of obscuring the behavior of our mock. In order t
 
 The existence of a GitHub API mock server also allowed us to avoid defining an explicit contract for the api client that we were testing. Since we never had to mock the api client itself, it wasn't strictly necessary to define an explicit interface for the behavior of that client.
 
-By leveraging the Mox library to define mocks for our api client, we were able to mitigate both of these drawbacks. This resulting in easy-to-read and easy-to-iterate on tests that allow each developer to define their own expectations against the mock client. It also forced us to define an explicit set of behaviors for our api client, in order for Mox to mock it.
+By leveraging the Mox library to define mocks for our api client, we were able to address both of these drawbacks. This resulted in easy-to-read and easy-to-iterate on tests that allow each developer to define their own expectations against the mock client. It also forced us to define an explicit set of behaviors for our api client, in order for Mox to mock it.
 
 Keep reading to see how we did it, and learn about some interesting "gotchas" we faced along the way!
 
 ## Getting Started
 
-Our very first "gotcha" came when we installed Mox and tried to use it in one of the child apps of our Elixir umbrella app. We added the Mox dependency to the `mix.exs` file of the `GithubClient` child app:
+First things first, We need to add the Mox dependency to the `mix.exs` file of the `GithubClient` child app:
 
 ```elixir
  {:mox, "~> 0.5.0", only: :test}
 ```
-
-Then, when we defined a mock and called on it in our test suite (more on that soon), we came across this error:
-
-```elixir
-** (exit) exited in: GenServer.call(Mox.Server, {:verify_on_exit, #PID<0.353.0>}, 30000)
-         ** (EXIT) no process: the process is not alive or there's no process currently associated with the given name, possibly because its application isn't started
-```
-
-This told us that the Mox application was _not_ getting started when our app started up in the test environment. Although we weren't explicitly calling `start_link/1` on the Mox application, we understood that Mix will attempt to start every dependent app listed in our `dependencies` function that responds to `start_link`.
-
-This is true, _unless_ you define an explicit `applications` function in your Mix file. In that case, Mix will only start the applications listed there. So, if you have such a function, remember to add `:mox` to the list.
 
 ## Mocking our Github Api Client
 
@@ -52,7 +41,6 @@ The module responsible for talking to the GitHub API is `GithubClient.ApiClient`
 ```elixir
 defmodule GithubClient.ApiClient do
   use HTTPoison.Base
-  alias GithubClient.GithubClientError
 
   defp access_token, do: Application.get_env(:github_client, :gh_token)
   def base_url, do: Application.get_env(:github_client, :base_url)
@@ -95,12 +83,24 @@ defmodule GithubClient.ApiClient do
     end
   end
 
-  def create_error_message(body = %{"errors" => errors}) when is_list(errors) do
-    body["message"] <> " (" <> List.first(errors)["message"] <> ")"
+  defp github_error(status, message) do
+    # do some stuff
   end
 
   def create_error_message(body) do
-    body["message"]
+    # do some stuff
+  end
+
+  defp do_post(url, params) do
+    url
+    |> post(Jason.encode!(params), headers())
+    |> handle_response
+  end
+
+  defp do_get(url) do
+    url
+    |> get(headers())
+    |> handle_response
   end
 
   def process_url(url) do
@@ -120,32 +120,12 @@ defmodule GithubClient.ApiClient do
     body
     |> Jason.decode!
   end
-
-  defp github_error(status, "") do
-    raise GithubClientError, message: "#{status}"
-  end
-
-  defp github_error(status, message) do
-    raise GithubClientError, message: "#{status}, #{message}"
-  end
-
-  defp do_post(url, params) do
-    url
-    |> post(Jason.encode!(params), headers())
-    |> handle_response
-  end
-
-  defp do_get(url) do
-    url
-    |> get(headers())
-    |> handle_response
-  end
 end
 ```
 
 *Note: This is an abbreviated look at the api client module, only including a handful of functions for finding/creating GitHub orgs*.
 
-Our module uses `HTTPoison` to enact web requests to the GitHub API. It also wraps up the logic around how to make certain requests and parse the responses from those requests.
+Our module uses `HTTPoison` to enact web requests to the GitHub API. It also wraps up the logic around how to make certain requests and parse the responses/handle certain error messages from those requests.
 
 Let's define a behaviour that we can use in this module:
 
@@ -176,7 +156,7 @@ Telling Mox to define a mock for a given behavior is pretty straightforward. We'
 Mox.defmock(ApiClientBehaviourMock, for: GithubClient.ApiClientBehaviour)
 ```
 
-Note that we are mocking the behavior directly, _not_ the module that uses it.
+Notice that we are mocking the behavior directly, _not_ the module that uses it.
 
 *Note: In order for the `test/support/mocks.ex` file to be compiled by our application, we need to add the following to our mix file:*
 
@@ -185,16 +165,8 @@ Note that we are mocking the behavior directly, _not_ the module that uses it.
 ...
 def project do
   [
-    app: :github_client,
-    version: "0.1.0",
-    build_path: "../../_build",
-    config_path: "../../config/config.exs",
-    deps_path: "../../deps",
-    lockfile: "../../mix.lock",
-    elixir: "~> 1.8",
     elixirc_paths: elixirc_paths(Mix.env()),
-    start_permanent: Mix.env() == :prod,
-    deps: deps()
+    ...
   ]
 end
 
@@ -240,7 +212,7 @@ And in our `config/test.exs`
 config :github_client, api_client: ApiClientBehaviourMock
 ```
 
-We'll teach the `GithubClient` module to grab the correctly configured api client from the environment, instead of calling on `ApiClient` directly:
+We'll teach the `GithubClient` module to grab the correctly configured api client from the application environment, instead of calling on `ApiClient` directly:
 
 
 ```elixir
@@ -284,7 +256,7 @@ defmodule GithubClientTest do
 end
 ```
 
-We already know that `GithubClient` will call on our `ApiClientBehaviourMock` when the tests run. So, we'll need to set some expectations against this mock that will allow our tests to run. In order for this happy-path test to run, we'll need to tell our mock to expect to receive certain input when `find_or_create_org/3` is called, and to return some valid response. *Note: We won't go into mocking the other functions called on our client here, instead we'll just focus on this one example*.
+We already know that `GithubClient` will call on our `ApiClientBehaviourMock` when the tests run. So, we'll need to set some expectations against this mock that will get our test passing. In order for this happy-path test to run, we'll need to tell our mock to expect to receive certain input when `find_or_create_org/3` is called, and to return some valid response. *Note: We won't go into mocking the other functions called on our client here, instead we'll just focus on this one example*.
 
 
 ```elixir
@@ -363,7 +335,6 @@ Let's start by removing anything specific to HTTP from our `GitHubClient.ApiClie
 
 ```elixir
 defmodule GithubClient.ApiClient do
-  alias GithubClient.GithubClientError
   alias GithubClient.HttpAdapter
   def find_or_create_organization(org_name, org_owner) do
     case find_organization(org_name) do
@@ -403,16 +374,12 @@ defmodule GithubClient.ApiClient do
     end
   end
 
-  def create_error_message(body = %{"errors" => errors}) when is_list(errors) do
-  end
-
   def create_error_message(body) do
-  end
-
-  defp github_error(status, "") do
+    # do some stuff
   end
 
   defp github_error(status, message) do
+    # do some stuff
   end
 
   defp do_post(url, params) do
@@ -427,7 +394,7 @@ defmodule GithubClient.ApiClient do
 end
 ```
 
-Our api client no longer directly uses `HTTPoison`, it doesn't know how to format request headers or request URLs and it doesn't have to deal with any JSON processing. It is _only_ in charge of kicking off requests to the appropriate GitHub API endpoint and formatting the response so that it can be consumed elsewhere in the application. Our refactored module is much cleaner and more adheren the the Single Responsibility Principle.
+Our api client no longer directly uses `HTTPoison`, it doesn't know how to format request headers or request URLs and it doesn't have to deal with any JSON processing. It is _only_ in charge of kicking off requests to the appropriate GitHub API endpoint and formatting the response so that it can be consumed elsewhere in the application. Our refactored module is much cleaner and more adherent the the Single Responsibility Principle.
 
 ### Mocking HTTP Interactions
 Now that we have a separate `GithubClient.HttpAdapter` module that we can mock, we're ready to take a look at some `GithubClient.ApiClient` tests.
@@ -451,7 +418,7 @@ end
 
 When this test runs, `GitHubClient.ApiClient` will call `GithubClient.HttpAdapter.get/1`, which will in turn call on `HTTPoison.Base`'s `get/2` function. So we need to define a mock for our adapter's behavior and teach `GithubClient.ApiClient` to use the mock in the test environment, instead of calling on the adapter directly.
 
-But wait, you might be thinking. We haven't implemented a behaviour for our adapter module! Our adpater module _uses_ `HTTPoison.Base` which implements *it's own* behaviour. So, we don't need to define our own! Instead, we will create a mock fo `HTTPoison` directly:
+But wait, you might be thinking. We haven't implemented a behaviour for our adapter module! Well, our adapter module _uses_ `HTTPoison.Base` which implements *it's own* behaviour. So, we don't need to define one! Instead, we will create a mock for the `HTTPoison.Base` behaviour directly:
 
 ```elixir
 # test/support/mocks.exs
@@ -468,7 +435,7 @@ config :github_client, http_adatper: GithubClient.HttpAdapter
 ```
 
 ```elixir
-# config/dev.exs
+# config/test.exs
 ...
 config :github_client, http_adatper: HttpMock
 ```
@@ -477,7 +444,6 @@ And teach `GithubClient.ApiClient` to grab the correct adapter from the applicat
 
 ```elixir
 defmodule GithubClient.ApiClient do
-  alias GithubClient.GithubClientError
   def http_adapter, do: Application.get_env(:github_client, :http_adapter)
 
   ...
@@ -507,6 +473,7 @@ defmodule GithubClient.ApiClientTest do
   @org_id "1234"
   @org_name "flatiron-labs"
   @org %{"id" => @org_id, "login" => @org_name}
+
   test "finds the org when the org exists" do
     HttpMock
     |> expect(:get, fn _url ->
@@ -518,7 +485,7 @@ defmodule GithubClient.ApiClientTest do
 end
 ```
 
-And that's it! By identifying a division within our original api client, and separating out the GitHub API logic from the code that enacts HTTP requests, we were able to write clean, well-organized code that was easy to mock and test. 
+And that's it! By identifying a division within our original api client, and separating out the GitHub API logic from the code that enacts HTTP requests, we were able to write clean, well-organized code that was easy to mock and test.
 
 
 ## Using Mox with GenServers
