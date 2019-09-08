@@ -8,7 +8,7 @@ After playing with LiveView and leveraging Phoenix PubSub to broadcast messages 
 
 ## The App
 
-The chat app app is fairly straightforward, and we won't get into the details of setting up LiveView in our Phoenix app here. You can check out the [source code](https://github.com/SophieDeBenedetto/phat) along with this [earlier post](https://elixirschool.com/blog/phoenix-live-view/) on getting LiveView up and running for more info.
+The chat app app is fairly straightforward, and we won't get into the details of setting up LiveView in our Phoenix app here. You can check out the [source code](https://github.com/elixirschool/live-view-chat) along with this [earlier post](https://elixirschool.com/blog/phoenix-live-view/) on getting LiveView up and running for more info.
 
 ### `ChatLiveView's` Initial State
 
@@ -559,7 +559,7 @@ def handle_event(
 end
 ```
 
-*Note: Here we can see some obvious repetition of code we wrote to handle the `"typing"` event. This code has been refactored to move Presence interactions into our `PhatWeb.Presence` module which you can check out [here](https://github.com/SophieDeBenedetto/phat/blob/master/lib/phat_web/presence.ex) and [here](https://github.com/SophieDeBenedetto/phat/blob/master/lib/phat_web/live/chat_live_view.ex). For the purposes of easy reading in this post, I let this code remain explicit.*
+*Note: Here we can see some obvious repetition of code we wrote to handle the `"typing"` event. This code has been refactored to move Presence interactions into our `PhatWeb.Presence` module which you can check out [here](https://github.com/elixirschool/live-view-chat/blob/master/lib/phat_web/presence.ex) and [here](https://github.com/elixirschool/live-view-chat/blob/master/lib/phat_web/live/chat_live_view.ex). For the purposes of easy reading in this post, I let this code remain explicit.*
 
 Here, we update the message changeset to reflect the content the user typed into the form field. Then, we fetch the user's metadata from Presence and update it to set `typing: false`. Lastly, we update the live view's socket to reflect the content the user typed into the message form field. This is a necessary step so that the template will display this content when it re-renders as a consequence of the `"presence_diff"` event.
 
