@@ -1,4 +1,4 @@
-# Introducing Railway IPC: Ruby and Elixir Packages for Inter-App Communication
+# Railway Messaging Part I: Introducing Ruby and Elixir Packages for Inter-App Communication
 
 ## You Want IPC
 
@@ -319,4 +319,4 @@ The Railway packages abstract away all the hard work of encoding and decoding th
 
 ## Conclusion
 
-The Railway libraries allow us build out robust async messaging systems in Elixir and Ruby with very little hand-rolled code. They offer sane and easy-to-use APIs for defining consumers and publishers in both languages, and, together with Google Protobuf, help our team enforce consistent message contracts between applications. All in all, we hope that these tools will empower us to meet the complex needs of our growing business, allowing relatively autonomous teams of engineers to grow and change our technology with minimal breakage. 
+The Railway libraries allow us build out robust async messaging systems in Elixir and Ruby with very little hand-rolled code. They offer sane and easy-to-use APIs for defining consumers and publishers in both languages, and, together with Google Protobuf, help our team enforce consistent message contracts between applications. All in all, we hope that these tools will empower us to meet the complex needs of our growing business, allowing relatively autonomous teams of engineers to grow and change our technology with minimal breakage.
