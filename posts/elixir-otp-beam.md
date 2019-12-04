@@ -62,11 +62,11 @@ We load the darks in one machine and the lights in the other. We add the soap to
 
 In this concurrent, one-core world, The Erlang VM ran one one thread with one scheduler on the one available core. The scheduler plucked Erlang processes from the single run queue and allotted a "time slice" to each processes. If a process exceeded its "time slice", the Erlang VM would pause the process, put it back on the queue and move on to the next item on the list. In this way, the Erlang VM would execute Erlang processes "concurrently" by quickly switching back and forth between processes, just like we quickly switched back and forth between our loads of dark laundry and light laundry to wash the loads at roughly the same time.
 
-![](./images/erlang-vm-1.png)
+![](../images/erlang-vm-1.png)
 
 With the advent of multi-core processors, the BEAM was able to utilize a [Symmetrical Multi Processor (SMP) in Erlang](http://erlang.org/euc/08/euc_smp.pdf). The first iteration of SMP in the Erlang VM came out with the release of Erlang OTP R11B in 2006. This version of the Erlang VM could run anywhere from 1 to 1024 schedulers on one thread each, sharing the same run queue and running on the same single core.
 
-![](./images/erlang-vm-2.png)
+![](../images/erlang-vm-2.png)
 
 With the release of OTP R12B in 2007, the Erlang VM running on a multi-core processor became capable of claiming one thread per core on which to run a scheduler. This allowed for the parallel running of Erlang processes as a set of schedulers across cores pulled from a shared run queue to execute processes. So, Erlang's existing ability to execute concurrent processes allowed it to immediately adapt to running parallel processes on multi-core computers.
 
@@ -94,7 +94,7 @@ This had the potential to create processing bottlenecks--where one slow running 
 
 This issue was resolved by the release of OTP R13B, which moved away from the common run queue and implemented dedicated run queues per thread per core. Today, the Erlang VM runs on one thread on each core. Each thread runs its own scheduler that pulls from its very own run queue. Data is *not* shared across queues so there is no need to manage locking. Everyone gets their own laundry to load and their own bottle of detergent to use!
 
-![](./images/erlang-vm-1.png)
+![](../images/erlang-vm-1.png)
 
 ## How Does the BEAM Manage Parallel Processes?
 
