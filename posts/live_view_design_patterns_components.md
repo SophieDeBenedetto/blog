@@ -1,7 +1,10 @@
 # LiveView Design Patterns: Components and Single Responsibility Principle
 
 ## `LiveView` Can Get Messy  
-Move LiveView means more code in live views--equivalent of "fat controllers". How can we write live views that are easy to reason about and maintain and adhere to common design principles like SRP?
+
+As LiveView becomes a more established technology, we naturally find ourselves leveraging to back more and more complex features. If we're not careful, this can lead to "fat controller syndrome"––live views that are jam packed with complex business logic and disparate responsibilities, just like the classic "fat Rails controller".
+
+How can we write live views that are easy to reason about and maintain and adhere to common design principles like SRP?
 
 One way to achieve this goal is to leverage the `PhoenixLive.Component` behaviour.
 
@@ -379,4 +382,4 @@ We did run into an obstacle when we found ourselves unable to use `live_redirect
 
 Still, this approach doesn't allow us to build a live view that is entirely agnostic of the state of the search form. In order to allow users to navigate directly to the route with query params, our parent live view does set up the initial state of the search form and pass it down into the component. Regardless of this drawback, reaching for components here has allowed us to write and maintain a slimmer live view.
 
-For a look at some of the other state, markup and event handling isolation options that LiveView offers, check out the docs [here](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-compartmentalizing-markup-and-events-with-render-live_render-and-live_component). 
+For a look at some of the other state, markup and event handling isolation options that LiveView offers, check out the docs [here](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#module-compartmentalizing-markup-and-events-with-render-live_render-and-live_component).
