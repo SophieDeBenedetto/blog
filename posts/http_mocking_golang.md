@@ -4,7 +4,7 @@ Let's take a look at how we can use interfaces to build a shared mock HTTP clien
 
 ## The App 
 
-Let's say we're building an app that interacts with the GitHub API on our behalf. Users of the app can use it to do things like create a GitHub repo, open an issue on repos, fetch information about an organization and more. Our app implements a rest client that makes these GitHub API calls. 
+Let's say we're building an app that interacts with the GitHub API on our behalf. Users of the app can do things like create a GitHub repo, open an issue on a repo, fetch information about an organization and more. Our app implements a rest client that makes these GitHub API calls. 
 
 A simplified version of our client, implementing just a `POST` function for now, looks something like this:
 
@@ -41,7 +41,7 @@ The function body takes care of the following:
 * Make a new `http.Request` with the `http.MethodPost`, the given url, and the JSON body converted into a reader. 
 * Add the given headers to the request 
 * Create an instance of an `http.Client` struct
-* Use the http `Do` function to send the request 
+* Use the `http.Client`'s `Do` function to send the request 
 
 Our `Post` function directly instantiates the client struct and calls `Do` on that instance. This leaves us with a little problem...
 
@@ -51,29 +51,31 @@ Because our `restclient` package's `Do` function calls directly on the `http.Cli
 
 Further, relying on real GitHub API interactions makes it difficult for us to write legible tests in which a given set of input results in an expected outcome. We end up with tests that are less declarative, that force other developers reading our code to infer an outcome based on the input to a particular HTTP request. 
 
-So, how can we write clear and declarative tests that avoid sending real web requests? We'll build a mock HTTP client and configure our tests to use that mock client. Then, each test can clearly declare the mocked response for a given HTTP request. But wait! In order to build our mock client and teach our code when to use the real client and when to use the mock, we'll need to build an interface.
+So, how can we write clear and declarative tests that avoid sending real web requests? 
+
+We'll build a mock HTTP client and configure our tests to use that mock client. Then, each test can clearly declare the mocked response for a given HTTP request. But wait! In order to build our mock client and teach our code when to use the real client and when to use the mock, we'll need to build an interface.
 
 ## We Need an Interface! 
 
-An interface allows us to define a collection of methods. Any custom struct types implementing that same collection of methods will be considered to conform to that interface. 
+An interface is really just a named collection of methods. Any custom struct types implementing that same collection of methods will be considered to conform to that interface. 
 
 A struct's ability to satisfy a particular interface is not enforced. Instead, it is implied that a given struct satisfies a given interface if that struct implements all of the methods declared in the interface. 
 
-Interfaces allow us to achieve polymorphism––instead of a given function or variable declaration expected a specific type of struct, it can expect an entity of an interface type shared by one or more structs. In this way we can define functions that accepts or declare variables that can be set equal to a variety of structs that implement a shared behavior. 
+Interfaces allow us to achieve polymorphism––instead of a given function or variable declaration expecting a specific type of struct, it can expect an entity of an interface type shared by one or more structs. In this way we can define functions that accept, or declare variables that can be set equal to a variety of structs that implement a shared behavior. 
 
 If you're unfamiliar with interfaces in Golang, check out [this excellent and concise resource from Go By Example](https://gobyexample.com/interfaces).  
 
 So, what does this have to do with mocking web requests in our test suite? 
 
-We'll refactor our `restclient` package to be less rigid when it comes to its HTTP client. Instead of instantiating the `http.Client` struct directly in our `Post` function body, our code will get a little smarter and a little more flexible. We will teach it to work work any struct that conform to a shared HTTP client interface. Then, we will be able to configure our package to use the `http.Client` struct by default and an instance of our mock client struct (coming soon!) in any tests for which we want to mock web requests. 
+We'll refactor our `restclient` package to be less rigid when it comes to its HTTP client. Instead of instantiating the `http.Client` struct directly in our `Post` function body, our code will get a little smarter and a little more flexible. We will teach it to work work with *any* struct that conforms to a shared HTTP client interface. Then, we will be able to configure our package to use the `http.Client` struct by default and an instance of our mock client struct (coming soon!) in any tests for which we want to mock web requests. 
 
 ## Let's Build It!
 
 ### Step 1. Define the Client Interface 
 
-First off, we'll define an interface in our `restclient` package that both the `http.Client` struct and our soon-to-be-defined mock client struct will conform to. 
+First, we'll define an interface in our `restclient` package that both the `http.Client` struct and our soon-to-be-defined mock client struct will conform to. 
 
-We'll call our interface `HTTPClient` and declare that it implements just one function, `Do`, since that is the only function we are currently invoking on the `http.Client` struct. 
+We'll call our interface `HTTPClient` and declare that it implements just one function, `Do`, since that is the only function we are currently invoking on the `http.Client` instance. 
 
 ```go
 package restclient
@@ -84,11 +86,11 @@ type HTTPClient interface {
 } 
 ```
 
-Note that we've declared that our interface's `Do` function takes in an argument of a pointer to an `http.Request` and returns either a pointer to an `http.Response` or an error. This is the *exact API of the existing `http.Client`'s `Do` function*. We need to ensure that this is the case since we are defining an interface that the `http.Client` can conform to, along with our as yet to be defined mock client struct. 
+Note that we've declared that our interface's `Do` function takes in an argument of a pointer to an `http.Request` and returns either a pointer to an `http.Response` or an error. This is the *exact API of the existing `http.Client`'s `Do` function*. We need to ensure that this is the case since we are defining an interface that the `http.Client` can conform to, along with our as-yet-to-be-defined mock client struct. 
 
-Now that we've defined our interface, let's make our package smart enough to operate on any entity that conforms to that interface.
+Now that we've defined our interface, let's make our package smart enough to operate on *any* entity that conforms to that interface.
 
-### Step 2. Defining the `Client` Variable 
+### Step 2. Define the `Client` Variable 
 
 We'll declare a variable, `Client`, of the type of our `HTTPClient` interface:
 
@@ -101,9 +103,11 @@ var (
 )
 ```
 
-A variable of an interface type can be set equal to any type that implements that interface. Since `http.Client` conforms to the `HTTPClient` interface, we can later set `Client` to an instance of this struct. Later, once we define our mock client and conform it to our `HTTPClient` interface, we will be able to set the `Client` variable to instances of either `http.Client` *or* the mock HTTP client. 
+A variable of an interface type can be set equal to any type that implements that interface. Since `http.Client` conforms to the `HTTPClient` interface, we can set `Client` to an instance of this struct. Later, once we define our mock client and conform it to our `HTTPClient` interface, we will be able to set the `Client` variable to instances of either `http.Client` *or* the mock HTTP client. 
 
-Now that we've defined our `Client` variable, let's teach our `restclient` package to set `Client` to an instance of `http.Client` when it initializes. We'll do this is an `init` function. Recall that a package's `init` function will run just once, when the package is imported (regardless of how many times you import that package elsewhere in your app), and before any other part of the package. Learn more about the `init` function [here](https://www.digitalocean.com/community/tutorials/understanding-init-in-go).
+Now that we've defined our `Client` variable, let's teach our `restclient` package to set `Client` to an instance of `http.Client` when it initializes. 
+
+We'll do so in an `init` function. Recall that a package's `init` function will run just once, when the package is imported (regardless of how many times you import that package elsewhere in your app), and before any other part of the package. Learn more about the `init` function [here](https://www.digitalocean.com/community/tutorials/understanding-init-in-go).
 
 ```go
 package restclient
@@ -241,7 +245,7 @@ var (
 
 The `GetDoFunc` can hold any value that is a function taking in an argument of a pointer to an `http.Request` and return either a pointer to an `http.Response` or an error. 
 
-Next up, we'll implement the function body of the `mocks` package's `Do` function to return the invocation of `GetDoFunc` function with an argument of whatever request was passed into `Do`:
+Next up, we'll implement the function body of the `mocks` package's `Do` function to return the invocation of `GetDoFunc` with an argument of whatever request was passed into `Do`:
 
 ```go
 package mocks
@@ -288,7 +292,7 @@ mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
 	}
 ```
 
-Thus, when `restclient.Post` calls `Client.Do`, the mock client's `Do` function invokes this anonymous function, returning the return value defined above. 
+Thus, when `restclient.Post` calls `Client.Do`, the mock client's `Do` function invokes this anonymous function, returning the `nil` and our dummy error. 
 
 Let's put it all together in an example test! Let's say our app has a service `repositories`, that makes a `POST` request to the GitHub API to create a new repo. We want to write a test for the happy path--a successful repo creation. Our test will look something like this:
 
@@ -375,6 +379,6 @@ Let's recap what we've built before we wrap up.
 
 By implementing an `HTTPClient` interface, we were able to make our `restclient` package flexible enough to operate on any client struct that conforms to the interface by implementing a `Do` function. This meant that we could configure the `restclient` package to initialize with a `Client` variable set equal to an `http.Client` instance, but reset `Client` to an instance of a mock client struct in any given test suite. 
 
-We defined a mock client struct that conformed to this interface and implemented a `Do` function whose return value was also configurable. This allowed us to set the return value of the mock client's call to `Do` to whatever response helps us create a given test scenario. 
+We defined a mock client struct that conforms to this interface and implemented a `Do` function whose return value was also configurable. This allowed us to set the return value of the mock client's call to `Do` to whatever response helps us create a given test scenario. 
 
 In this way, we are able to mock any web request sent by our `restclient` in simple, declarative tests that are easy to write and read. 
