@@ -1,8 +1,8 @@
-Go provides robust support for concurrent programming. Using goroutines and channels, we can ensure that our program works on on more than one task in a given time period. This is perfect for scenarios in which we need to process large sets of data in a timely manner and report on the results of this processing back to the caller.
+Go provides robust support for concurrent programming. Using goroutines and channels, we can ensure that our program works on more than one task in a given time period. This is perfect for scenarios in which we need to process large sets of data in a timely manner and report on the results of this processing back to the caller.
 
 In this post, we'll use goroutines, channels and WaitGroups to process a "bulk user registration" request.
 
-This post was inspired by my learnings from Federico León's course, [Golang: The Ultimate Guide to Microservices, available](https://www.udemy.com/course/golang-the-ultimate-guide-to-microservices-in-go-part-1/) on Udemy.
+This post was inspired by my learnings from Federico León's course, [Golang: The Ultimate Guide to Microservices](https://www.udemy.com/course/golang-the-ultimate-guide-to-microservices-in-go-part-1/) available on Udemy.
 
 ## Concurrency is NOT Parallelism!
 
@@ -12,7 +12,7 @@ Before we get started, I'd like to call out an important distinction. When we ta
 
 **Parallelism**, on the other hand, can only occur on a machine with multiple CPUs. For parallel computing to occur, the various tasks spawned by our program will have to be split up into different run queues across the different cores of our multiple CPU machine. In this scenario, tasks can be pulled off of these independent queues on each core at the same time and executed at the same time, i.e. in parallel.
 
-As Go developers, we are responsible for writing code that is concurrent. Concurrency is a matter of application design,whereas parallelism requires a certain type of machine as well as certain language features.
+As Go developers, we are responsible for writing code that is concurrent. Concurrency is a matter of application design, whereas parallelism requires a certain type of machine as well as certain language features.
 
 While I'm new to Go, you can check out some of my earlier writing on concurrency vs. parallelism on the Erlang VM [here](https://www.thegreatcodeadventure.com/elixir-and-the-beam-how-concurrency-really-works/).
 
@@ -24,7 +24,8 @@ Let's say we're responsible for building a Go service that registers students in
 
 Administrators taking advantage of our bulk upload feature can't wait around all day for our app to process each student registration in turn. They are far to busy administrating our extremely successful school and its many popular course offerings.
 
-We need concurrency! We'll build a function that will accept a list of students to register along with the course for which they are signing up. And our function will spawn a set of tasks that will register students concurrently. Lastly, it will collect the results of all of the student registration attempts and report those results to the caller.
+We need concurrency! We'll build a function that will accept a list of students to register along with the course for which they are signing up. Our function will spawn a set of tasks that will register students concurrently. Lastly, it will collect the results of all of the student registration attempts and report those results to the caller.
+
 Let's do it!
 
 ## The Code
@@ -36,6 +37,7 @@ You can view the final code for this post [here](https://github.com/SophieDeBene
 We'll define a function, `RegisterStudents`, that accepts two arguments, a slice of `Student` structs, each describing a student to be registered, and the `Course` struct, describing the course they are signing up for. It will return an entity that describes the results of every attempted student registration in the form of a `RegisterStudentsResults` struct.
 
 ## The Domain
+
 Let's assume we already have the following structs defined in our domain:
 
 ```go
@@ -76,7 +78,7 @@ The `StudentRegistrationResult` struct will contain a `StudentRegistration` stru
 
 ## Defining the Functions
 
-Now that we have a handle on the entities we're working with,we're ready to define some functions!
+Now that we have a handle on the entities we're working with, we're ready to define some functions!
 
 Let's start with the signature of our `RegisterStudents` function.
 
@@ -101,9 +103,9 @@ func RegisterStudent(student Student, course Course) StudentRegistrationResult, 
 
 The `RegisterStudent` function takes in an argument of the student and the course and returns a `StudentRegistrationResult` struct, appropriately populated with the `StudentRegistration` or the error returned from our `doRegistration` helper function invocation. 
 
-The contents of `doRegistration` aren't important here––we won't worry about what actually occurs when we register a student. We're just concerned with the orchestration of our workflow.
+The contents of `doRegistration` aren't important here––we won't worry about what actually occurs when we register a student. For the purposes of this post, we're only concerned with the orchestration of our workflow.
 
-So, given that we need our bulk registration function, RegisterStudents, to iterate over the list of students and register each one, we could do something like this:
+So, given that we need our bulk registration function, `RegisterStudents`, to iterate over the list of students and register each one, we could do something like this:
 
 ```go
 func RegisterStudents(students []Student, course Course) *RegisterStudentResults {
@@ -116,14 +118,15 @@ func RegisterStudents(students []Student, course Course) *RegisterStudentResults
 }
 ```
 
-This approach will work just fine, but its not concurrent. We're iterating over our list of students, enacting the registration function one at a time, and collecting the registration results in our `RegisterStudentsResults` instance.
+This approach will work just fine, but its *not* concurrent. We're iterating over our list of students, enacting the registration function one at a time, and collecting the registration results in our `RegisterStudentsResults` instance.
 
 ## Adding Concurrency with Goroutines
+
 A goroutine is a lightweight thread managed by the Go runtime. The main goroutine runs when we execute our Go program. But we can write code that spawns additional goroutines via the `go` keyword.
 
 With `go someFunctioncall()`, we are telling the Go runtime to create a new goroutine and to execute `someFunctionCall` inside that goroutine. The spawned goroutine will run at the same time as the rest of the code in our main routine. In this way, we can write concurrent Go code.
 
-We can make our workflow concurrent by spawning a goroutine for each call to `RegisterStudent`. Let's do it!
+We'll make our workflow concurrent by spawning a goroutine for each call to `RegisterStudent`. Let's do it!
 
 ```go
 func RegisterStudents(students []Student, course Course) *RegisterStudentResults {
@@ -146,7 +149,7 @@ Luckily for us, we can do exactly that with channels! A channel provides a mecha
 
 Let's do it!
 
-We'll start by initializing a channel outside of the iteration over our students slice:
+We'll start by initializing a channel outside of the iteration over our `students` slice:
 
 ```go
 func RegisterStudents(students []Student, course Course) *RegisterStudentResults {
@@ -177,14 +180,17 @@ func RegisterStudents(students []Student, course Course) RegisterStudentsResults
 }
 ```
 
-Let's break down this workflow. The `RegisterStudents` function iterates over the list of students to be registered. It spawns a goroutine for each student registration, making the channel available to that goroutine.
+Let's break down this workflow. 
+
+The `RegisterStudents` function iterates over the list of students to be registered. It spawns a goroutine for each student registration, making the channel available to that goroutine.
+
 Each goroutine's call to `ConcurrentRegisterStudent` will result in a message of type `StudentRegistrationResult` being written to that channel.
 
 Having written a message to our channel, we now need to make sure that the main goroutine reads the message from that channel.
 
 Keep in mind that we are writing each individual StudentRegistrationResult to our channel, but we want our `RegisterStudents` function to return a `RegisterStudentsResults` instance that contains the list of all of our results.
 
-So, we'll need to listen for each message that gets written to the channel and collect all of the `StudentRegistrationResult` instances.
+So, we'll need to listen for each message that gets written to the channel and collect all of these `StudentRegistrationResult` instances.
 
 We can do so by iterating over the range of the `input` channel and reading each message:
 
@@ -211,13 +217,14 @@ func RegisterStudents(students []Student, course Course) RegisterStudentsResults
 }
 ```
 
-Once our iteration over the input channel's message concludes, we'll return the results.
+Once our iteration over the `input` channel's message concludes, we'll return the results.
 
-But when will that iteration conclude? After all, our input channel does not contain a set number of messages. Rather, we are listening to all of the messages that come in over that channel.
+But *when* will that iteration conclude? After all, our input channel does not contain a set number of messages. Rather, we are listening to all of the messages that come in over that channel.
 
 We'll return to this question in a bit. First, let's see what happens when we try to execute this code.
 
 ## Dealing with Deadlock
+
 We'll define the following `main` function to execute our `RegisterStudents` function with a list of students:
 
 ```go
@@ -228,8 +235,9 @@ func main() {
             Student{Name: "Sophie"},
             Student{Name: "Ben"},
         }
+    course := Course{Name: "Intro to Golang"}
 
-    result := RegisterStudents(students, Course{Name: "Into To Golang"})
+    result := RegisterStudents(students, course)   
     
     fmt.Print(result)
 }
@@ -255,6 +263,7 @@ exit status 2
 ```
 
 Oh no!
+
 Let's add some logging to help us better understand at what point in the execution of our program we are encountering this problem:
 
 ```go 
@@ -302,7 +311,8 @@ In order to achieve this, we need to bring in one more Go concurrency tool--Wait
 ## Introducing WaitGroups
 
 We now understand that we need to tell our input channel to close once the spawned `ConcurrentRegisterStudent` routines have concluded. But how can we ensure that we close this channel only after those goroutines have finished running?
-WaitGroups allow us to block the execution of our main function until any goroutines we've added to a given WaitGroup are done executing.
+
+WaitGroups allow us to block the execution of our main function until any goroutines we've added to a given WaitGroup are done executing. In this way, we can block execution of our main routine until all of our `ConcufurrentRegisterStudent` routines are done and *then* instruct our program to close the `input` channel.
 
 ### How does it work? 
 
@@ -333,7 +343,7 @@ Well, the last thing that the `ConcurrentRegisterStudent` function does is write
 ```go
 func ConcurrentRegisterStudent(student Student, course Course, input chan StudentRegistrationResult) {
 	result := RegisterStudent(student, course)
-	input <- result
+	input <- result // Once this happens, there is not more work to be done in this function
 }
 ```
 
@@ -345,9 +355,9 @@ So, we need a way to read from the input channel in a separate goroutine. This s
 
 ### Managing WaitGroups in Goroutines
 
-Let's define a function that will run in this separate goroutine now. Our function needs to read from the input channel and decrement the WaitGroup's counter accordingly. Our function will also need to communicate back to the main execution's `RegisterStudents` function.
+Let's define a function that will run in this separate goroutine now. Our function needs to read from the `input` channel and decrement the WaitGroup's counter accordingly. Our function will also need to communicate back to the main execution's `RegisterStudents` function so that the student registration results can be collected.
 
-So, it will take in three arguments––the input channel from which it is reading, an output channel that it will use to send messages back to `RegisterStudents`, and a pointer to the WaitGroup instance:
+So, our function will take in three arguments––the input channel from which it is reading, an output channel that it will use to send messages back to `RegisterStudents`, and a pointer to the WaitGroup instance:
 
 ```go 
 func handleResults(input chan StudentRegistrationResult, output chan RegisterStudentsResults, wg *sync.WaitGroup) {
@@ -356,7 +366,7 @@ func handleResults(input chan StudentRegistrationResult, output chan RegisterStu
 
 This function will listen to the range of messages being written to the input channel. It will collect the results of each student registration message in order to return this collection back to `RegisterStudents`. It will do so by establishing an instance of `RegisterStudentsResults` and appending each result received over the channel to this instance's `Results` collection.
 
-Then, it will decrement the WaitGroup's counter, since our receipt of a message over the `input` channel means that a goroutine has concluded:
+Then, it will decrement the WaitGroup's counter, since our receipt of a message over the `input` channel means that a `ConcurrentRegisterStudetn` goroutine has concluded:
 
 ```go 
 func handleResults(input chan StudentRegistrationResult, output chan RegisterStudentsResults, wg *sync.WaitGroup) {
@@ -429,6 +439,8 @@ func RegisterStudents(students []Student, course Course) RegisterStudentsResults
     return results
 }
 ```
+
+One thing I'd like to call out here before we move on. Note that we've defined the `handleResults` function to take in an argument of *a pointed to an instance of type sync.WaitGroup*. If we don't define our function this way, and pass in the memory address of the actual WaitGroup instance via `&wg`, then our function would be operating on a *copy of the WaitGroup instance*. However, thanks to the call to `wg.Wait()` in `RegisterStudents`, our code will block until the original WaitGroup instance's counter is back to zero. So, if we allow `handleResults` to operate on a copy of the `wg` instance, rather than on the original instance, the `wg.Wait()` line will never unblock, because the original WaitGroup instance's counter will never reach zero. 
 
 ## Putting It All Together
 Let's break down this code flow:
@@ -596,7 +608,7 @@ This will ensure that after we read the message over the output channel, but bef
 
 ## Conclusion
 
-Phew! We introduces a LOT of concepts and strategies in this post. Let's recap.
+Phew! We introduced a LOT of concepts and strategies in this post. Let's recap.
 
 We had a concurrency problem to solve––we needed to write code that could process a set of student course registrations within the same time period.
 
@@ -607,9 +619,10 @@ We used a channel that we called `input` to send messages between these goroutin
 The close of the `input` channel unblocked our "results collecting" routine, allowing it to send the completed result set to the main execution over another channel we called `output`.
 
 Our main execution then listened for messages over the `output` channel, receiving the final results and returning.
+
 The overall flow of communication could be modeled like this:
 
 ![](../images/go-concurrency-communication.png)
 
 By using goroutines to execute concurrent operations, channels to communicate between those goroutines and a WaitGroup to synchronize and orchestrate these operations, we achieved a fast, reliable and concurrent program for registering large numbers of students at a time.
-You can view the final code for this blog post and run the program yourself by cloning down this repo.
+You can view the final code for this blog post and run the program yourself by cloning down [this repo](https://github.com/SophieDeBenedetto/go-concurrency-blog-post).
