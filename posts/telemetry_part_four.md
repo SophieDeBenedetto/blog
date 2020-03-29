@@ -45,7 +45,7 @@ end
 
 ### `telemetry_poller` Telemetry Events
 
-When our app starts up, the `telemetry_poller` app will also start running. This app will poll the Erlang VM to take the following measurements and execute these measurements at Telemetry events:
+When our app starts up, the `telemetry_poller` app will also start running. This app will poll the Erlang VM to take the following measurements and execute these measurements as Telemetry events:
 
 * Memory - Measurement of the memory used by the Erlang VM
 * Total run queue lengths - Measurement of the queue of tasks to be scheduled by the Erlang scheduler. This event will be executed with a measurement map describing:
@@ -60,7 +60,7 @@ Let's define metrics for some of these events in our `Quantum.Telemetry` module.
 
 ### Defining Our Metrics
 
-The `Telemetry.Metrics.last_value/2` function defines a metric that holds the value of the selected measurement from the most recent event. The `TelemetryMetricsStatsd` reporter will send such a metric to StatsD as a "gauge" metric. Let's define a set of gauge metrics for some of the Telemetry events mentioned above:
+The [`Telemetry.Metrics.last_value/2`](https://hexdocs.pm/telemetry_metrics/Telemetry.Metrics.html#last_value/2) function defines a metric that holds the value of the selected measurement from the most recent event. The `TelemetryMetricsStatsd` reporter will send such a metric to StatsD as a "gauge" metric. Let's define a set of gauge metrics for some of the Telemetry events mentioned above:
 
 ```elixir
 # lib/quantum/telemetry.ex
@@ -105,7 +105,7 @@ memory() ->
     telemetry:execute([vm, memory], maps:from_list(Measurements), #{}).
 ```
 
-Let's break this down further. We can examine the measurements returned from the call to [`erlang:memory()`](http://erlang.org/doc/man/erlang.html#memory-0) by trying it out oursleves in `iex`:
+Let's break this down further. We can examine the measurements returned from the call to [`erlang:memory()`](http://erlang.org/doc/man/erlang.html#memory-0) by trying it out ourselves in `iex`:
 
 ```elixir
 iex(1)> :erlang.memory()
@@ -124,7 +124,17 @@ iex(1)> :erlang.memory()
 
 We can see that is contains a key of `:total`, pointing to a value of the total amount of memory allocated to the Erlang VM.
 
-Thus, a Telemetry event is executed with the name `[vm, memory]` and a set of measurements including this total. When we invoke our `Telemetry.Metrics.last_value/2` function, we are listening for this event and constructing a gauge metric with the value of the `:total` key included in the provided measurements.
+Thus, a Telemetry event is executed with the name `[vm, memory]` and a set of measurements including this total. When we invoke our `Telemetry.Metrics.last_value/2` function, we are telling our reporter, `TelemetryStatsD`, to attach a handler for this event and to respond to it by constructing a gauge metric with the value of the `:total` key included in the provided measurements:
+
+```elixir
+# lib/quantum/telemetry.ex
+
+defp metrics do
+  [
+    last_value("vm.memory.total", unit: :byte)
+  ]
+end
+```
 
 ### The `total_run_queue_lengths/0` Function
 
@@ -143,7 +153,7 @@ total_run_queue_lengths() ->
         #{}).
 ```
 
-Thus, we are specifying that our Telemetry pipeline attach a handler for the `[vm, total_run_queue_lengths]` event and constructing a two gauge metrics--one with the value of the `total` measurement and one with the value of the `cpu` measurement:
+To observe this event, we are specifying that our Telemetry pipeline attach a handler for the `[vm, total_run_queue_lengths]` event and constructing two gauge metrics for every such event that is executed--one with the value of the `total` measurement and one with the value of the `cpu` measurement:
 
 ```elixir
 # lib/quantum/telemetry.ex
@@ -170,7 +180,7 @@ system_counts() ->
     }).
 ```
 
-Thus, we are specifying that our Telemetry pipeline attach a handler for the `[vm, system_counts]` events and construction a gauge metric with the value of the `process_count` measurement:
+To observe this event, we are specifying that our Telemetry pipeline attach a handler for the `[vm, system_counts]` event and construct a gauge metric with the value of the `process_count` measurement for every such event:
 
 ```elixir
 # lib/quantum/telemetry.ex
