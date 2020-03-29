@@ -1,6 +1,17 @@
 # Instrumenting Phoenix with Telemetry Part II: Telemetry Metrics + Reporters
 
-In part I of this series, we learned why observability is important and introduced Erlang's Telemetry library. We used it to hand-roll some instrumentation for our Phoenix app, but it left us with some additional problems to solve. In this post, we'll use Elixir's `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries to define and send metrics to StatsD for a given Telemetry event.
+## Table Of Contents
+
+In this series, we'll be instrumenting a Phoenix app and sending metrics to StatsD with the help of Elixir and Erlang's Telemetry offerings.
+
+* Part I: Telemetry Under The Hood
+* Part II: Handling Telemetry Events with `TelemetryMetrics` + `TelemetryMetricsStatsd`
+* Part III: Observing Phoenix + Ecto Telemetry Events
+* Part IV: Erlang VM Measurements with `telemetry_poller`, `TelemetryMetrics` + `TelemetryMetricsStatsd`
+
+## Intro
+
+In [Part I]() of this series, we learned why observability is important and introduced Erlang's Telemetry library. We used it to hand-roll some instrumentation for our Phoenix app, but it left us with some additional problems to solve. In this post, we'll use Elixir's `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries to define and send metrics to StatsD for a given Telemetry event.
 
 ## Recap
 

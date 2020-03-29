@@ -1,5 +1,16 @@
 # Instrumenting Phoenix with Telemetry Part IV: `telemetry_poller` + Erlang VM Metrics
 
+## Table Of Contents
+
+In this series, we'll be instrumenting a Phoenix app and sending metrics to StatsD with the help of Elixir and Erlang's Telemetry offerings.
+
+* Part I: Telemetry Under The Hood
+* Part II: Handling Telemetry Events with `TelemetryMetrics` + `TelemetryMetricsStatsd`
+* Part III: Observing Phoenix + Ecto Telemetry Events
+* Part IV: Erlang VM Measurements with `telemetry_poller`, `TelemetryMetrics` + `TelemetryMetricsStatsd`
+
+## Intro
+
 In the previous post we taught `Telemetry.Metrics` to define metrics for a number of out-of-the-box Phoenix and Ecto Telemetry events and used `TelemetryMetricsStatsd` to handle and report those events to StasD.
 
 In this post, we'll incorporate Erlang's `telemetry_poller` library into our Phoenix app so that we can observe and report on Erlang VM Telemetry events.

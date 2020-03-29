@@ -1,14 +1,25 @@
 # Instrumenting Phoenix with Telemetry Part III: Phoenix + Ecto Telemetry Events
 
-In the previous post, we saw how the `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries abstracted away the need to define custom handlers and callback functions, attach those handlers to events and implement our own metric reporting logic. But our Telemetry pipeline still needs a little work--we're still on the hook for emitting all of our own Telemetry events.
+## Table Of Contents
 
-In order to really be able to observe the state of our production Phoenix app, we need to be reporting on much more than just one endpoint's request duration and count. We want to be able to handle information-rich events describing web requests across the app, database queries, the behavior and state of the Erlang VM, the behavior and state of any workers in our app, and more.
+In this series, we'll be instrumenting a Phoenix app and sending metrics to StatsD with the help of Elixir and Erlang's Telemetry offerings.
 
-Instrumenting all of that by hand, by executing custom Telemetry events wherever we need them and defining custom handler, will be tedious and time-consuming. On top of that, it will be a challenge to standardize event naming conventions and payloads across the app.
+* Part I: Telemetry Under The Hood
+* Part II: Handling Telemetry Events with `TelemetryMetrics` + `TelemetryMetricsStatsd`
+* Part III: Observing Phoenix + Ecto Telemetry Events
+* Part IV: Erlang VM Measurements with `telemetry_poller`, `TelemetryMetrics` + `TelemetryMetricsStatsd`
+
+## Intro
+
+In the [previous post](), we saw how the `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries abstracted away the need to define custom handlers, attach those handlers to events, and implement our own metric reporting logic. But our Telemetry pipeline still needs a little work--we're still on the hook for emitting all of our own Telemetry events!
+
+In order to really be able to observe the state of our production Phoenix app, we need to be reporting on much more than just one endpoint's request duration and count. We need to report information-rich metrics describing web requests across the app, database queries, the behavior and state of the Erlang VM, the behavior and state of any workers in our app, and more.
+
+Instrumenting all of that by hand, by executing custom Telemetry events wherever we need them, will be tedious and time-consuming. On top of that, it will be a challenge to standardize event naming conventions, measurements, and metadata across the app.
 
 In this post, we'll examine Phoenix and Ecto's out-of-the-box Telemetry events and use `Telemetry.Metrics` to observe a wide-range of such events.
 
-## Achieving Observability
+## Achieving Observability with Phoenix and Ecto Telemetry Events
 
 To achieve observability, we know we nee to track things like:
 
@@ -25,7 +36,7 @@ In the following tutorial, we will teach `Telemetry.Metrics` to observe these ou
 
 ## A Note On Formatting Metrics
 
-In our previous post, we used the `TelemetryMetricsStatsd` reporting library to format metrics and send them to StatsD over UDP. We can configure this reporter with either the standard formatter or the DogStatsD formatter. The standard formatter constructs and emits metrics that are compatible with the Etsy implementatin of StatsD. This implementation does _not_ support tagging, so `TelemetryMetricsStatsd` accommodates the tags we assign to metrics by including the tag values in the metric name.
+In our previous post, we used the `TelemetryMetricsStatsd` reporting library to format metrics and send them to StatsD over UDP. We can configure this reporter with either the standard formatter or the DogStatsD formatter. The standard formatter constructs and emits metrics that are compatible with the Etsy implementation of StatsD. This implementation does _not_ support tagging, so `TelemetryMetricsStatsd` accommodates the tags we assign to metrics by including the tag values in the metric name.
 
 For example, if we specify the following counter metric:
 
@@ -42,7 +53,7 @@ And execute a Telemetry event where the `conn` we pass in for the metadata argum
 "phoenix.request.-register-new"
 ```
 
-What if we ultimately want to send StasD metrics to Datadog, which _does_ support metric tagging? In that case, we can configure the `TelemetryMetricsStatsd` reporter to use the DogStatsD formatter, which would emit the following counter metric for the above event, including tags:
+What if we ultimately want to send StatsD metrics to Datadog, which _does_ support metric tagging? In that case, we can configure the `TelemetryMetricsStatsd` reporter to use the DogStatsD formatter, which would emit the following counter metric for the above event, including tags:
 
 ```
 "phoenix.request:1|c|#request_path:/register/new"
