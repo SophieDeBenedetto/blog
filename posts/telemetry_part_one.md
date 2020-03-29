@@ -1,4 +1,13 @@
-# Instrumenting Phoenix with Telemetry Part 1: Telemetry Under The Hood
+---
+author: Sophie DeBenedetto
+author_link: https://github.com/sophiedebenedetto
+categories: general
+date: 2020-03-29
+ayout: post
+title: Instrumenting Phoenix with Telemetry Part I, Telemetry Under The Hood
+excerpt: >
+  In this series, we're instrumenting a Phoenix app and sending metrics to StatsD with the help of Elixir and Erlang's Telemetry offerings. In Part I we'll start out by setting up a basic, DIY Telemetry pipeline and examining how Erlang's Telemetry library works under the hood
+---
 
 ## Table Of Contents
 
@@ -190,6 +199,8 @@ Next up, we'll take a look under the hood of the Telemetry library to understand
 ## Telemetry Under The Hood
 
 How does Telemetry invoke our handler callback function when an event is emitted? It leverages ETS! Telemetry stores our event and associated handler in an ETS table when we call `:telemetry.attach/4`. When we call `:telemetry.execute/3`, Telemetry looks up the handler function for the given event in the ETS table and executes it.
+
+In the next sections, we'll walk through some Telemetry source code so get a better understanding of how this process works. If you're new to Erlang (like me!), no problem. Just do your best to read through the code for a high-level understanding.
 
 ### Attaching Handlers to Events
 
@@ -454,6 +465,6 @@ Surprise! Phoenix and Ecto are *already* emitting common events from source code
 
 Further, Telemetry provides a number of reporting clients, including a StatsD reporter, that we can plug into our `Telemetry.Metrics` module for free metrics reporting to StatsD _or_ DogStatsD, allowing us to take advantage of event metadata with tagging.
 
-In the [next post](TBD), we'll leverage Telemetry Metrics and the Telemetry Statsd Reporter to observe, format and report the Telemetry event we established here. In doing so, we'll abstract away the need for our custom handler _and_ our custom StatsD reporter.
+In the next post, we'll leverage `Telemetry.Metrics` and the `TelemetryStatsdReporter` to observe, format and report the Telemetry event we established here. In doing so, we'll abstract away the need for our custom handler _and_ our custom StatsD reporter.
 
 See you soon!
