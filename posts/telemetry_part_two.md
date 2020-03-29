@@ -2,7 +2,7 @@
 
 ## Table Of Contents
 
-In this series, we'll be instrumenting a Phoenix app and sending metrics to StatsD with the help of Elixir and Erlang's Telemetry offerings.
+In this series, we're instrumenting a Phoenix app and sending metrics to StatsD with the help of Elixir and Erlang's Telemetry offerings.
 
 * Part I: Telemetry Under The Hood
 * Part II: Handling Telemetry Events with `TelemetryMetrics` + `TelemetryMetricsStatsd`
