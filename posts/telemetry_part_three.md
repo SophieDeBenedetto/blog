@@ -87,14 +87,20 @@ defmodule Quantum.Telemetry do
 end
 ```
 
+## Getting Started
+
+You can follow along with this tutorial by cloning down the repo [here](https://github.com/SophieDeBenedetto/quantum/tree/part-3-start).
+* Checkig out the starting state of our code on the branch [part-3-start](https://github.com/SophieDeBenedetto/quantum/tree/part-3-start)
+* Find the solution code on the branch [part-3-solution](https://github.com/SophieDeBenedetto/quantum/tree/part-3-solution)
+
 
 ## Phoenix Telemetry Events
 
-### Observing Our First Event
+### The `[:phoenix, :router_dispatch, :stop]` Event
 
 First up, we'll leverage one of the out-of-the-box Phoenix events to help us track and report metrics for web request counts and durations--the `[:phoenix, :router_dispatch, :stop]` event.
 
-`Phoenix.Router` emits this event after the request is processed by the Plug pipeline and the controller, but _before_ a response is rendered. Looking in Phoenix source code we can see the event being emitted [here](https://github.com/phoenixframework/phoenix/blob/d4596650df21e7e0603debcb5f2ad25eb9ac082d/lib/phoenix/router.ex#L357):
+The `Phoenix.Router` module executes this event after the request is processed by the Plug pipeline and the controller, but _before_ a response is rendered. Looking in Phoenix source code we can see the event being emitted [here](https://github.com/phoenixframework/phoenix/blob/d4596650df21e7e0603debcb5f2ad25eb9ac082d/lib/phoenix/router.ex#L357):
 
 ```elixir
 # phoenix/lib/phoenix/router.ex
@@ -106,10 +112,12 @@ metadata = %{metadata | conn: conn}
 
 Here, Phoenix is calculating the duration by subtracting the start time, set at the beginning of the request processing pipeline, from the current time. Then it's updating the metadata map to include the `conn`. Lastly, it's executing the Telemetry metric with this information.
 
-Now that we know which Telemetry event we care about, let's make the `Telemetry.Metrics` module aware of it.
+Now that we know which Telemetry event we care about, let's make our `Telemetry.Metrics`, `Quantum.Telemetry` module aware of it.
 
 
 ```elixir
+# lib/quantum/telemetry.ex
+
 def metrics do
   [
     summary(
@@ -138,7 +146,7 @@ By running the app and visiting the landing page, we see the following reported 
 "phoenix.router_dispatch.stop.count:1|c|#plug:Elixir.QuantumWeb.PageController,plug_opts:index"
 ```
 
-This presents a BIG win for us, as compared to our previous approach of manually executing a Telemetry event from _every controller action in our app_. By defining metrics for this event in our `Quantum.Telemetry` module and providing those metrics to the `TelemetryMetricsStatsd` reporter, we are able to report metrics for every web request our app receives, across all endpoints.
+This represents a BIG win for us, as compared to our previous approach of manually executing a Telemetry event from _every controller action in our app_. By defining metrics for this event in our `Quantum.Telemetry` module and providing those metrics to the `TelemetryMetricsStatsd` reporter, we are able to report metrics for every web request our app receives, across all endpoints.
 
 ### Getting More Out Of Tags
 
@@ -156,32 +164,36 @@ It provides the `:telemetry.execute/3` call with `metadata` that includes top-le
 
 It _also_ includes the request `conn` in that metadata map, under a key of `:conn`. What if we want to grab some data out of the `conn` to include in our metric tags?
 
-It would be great if we could tag these web request counter metrics with the response status--that way we can aggregate counts of succeeding and failing web requests.
+It would be great if we could tag these web request counter metrics with the response status--that way we can aggregate counts of successful and failed web requests.
 
 The response status _is_ present in the `conn`, under a key of `:status`. But the `Telemetry.Metrics.counter/2` function only knows how to deal with tags that are top-level in the provided `metadata`. If only there was some way to tell the counter metric how to apply tags from data that is _nested inside_ the provided metadata.
 
 This is where the metrics functions' `:tag_values` option comes in! We can use the `:tag_values` option to store a function that will be called later on during the Telemetry event handling process to construct additional tags from nested metadata info.
 
-Recall from the previous post that when we start up our `Telemetry.Metrics` supervisor, it starts the `TelemetryMetricsStatsd` GenServer with the list of metrics. The `TelemetryMetricsStatsd` GenServer tells Telemetry to store each listed event with its associated metrics, including each metric's options like `:tags` and `:tag_values`, in ETS. Later, when a Telemetry event is executed, Telemetry looks up the handler and metrics for the event in ETS and invokes the handler callback with the given event's measurement map, metadata and the stored metrics config.
-
-The handler callback function, `TelemetryMetricsStatsd.EventHandler.handle_event/4` will check for the presence of a `:tag_values` function for a given metric. If it finds one, it will invoke that function with an argument of the event's metadata and include the result in the list of tags in uses to format the metric.
-
-All _we_ have to do is implement a `:tag_values` callback function that expects to receive the event metadata and returns a map that includes all of the tags we want to apply to our metric:
+All _we_ have to do is implement a function that expects to receive the event metadata and returns a map that includes all of the tags we want to apply to our metric:
 
 ```elixir
+# lib/quantum/telemetry.ex
+
 def endpoint_metadata(%{conn: %{status: status}, plug: plug, plug_opts: plug_opts}) do
   %{status: status, plug: plug, plug_opts: plug_opts}
 end
 ```
 
-Then, when we call our metrics function will building out our metrics list, we set `:tag_values` to this function and `:tags` to our complete list of tags:
+Then, when we call a given metrics function, for example `counter/2`, we set  the `:tag_values` option to this function and `:tags` to our complete list of tags:
 
 ```elixir
-counter(
-  "phoenix.router_dispatch.stop.count",
-  tag_values: &__MODULE__.endpoint_metadata/1,
-  tags: [:plug, :plug_opts, :status]
-)
+# lib/quantum/telemetry.ex
+
+def metrics do
+  [
+    counter(
+      "phoenix.router_dispatch.stop.count",
+      tag_values: &__MODULE__.endpoint_metadata/1,
+      tags: [:plug, :plug_opts, :status]
+    )
+  ]
+end
 ```
 
 Now, when we run our Phoenix server and visit the landing page, we see the following counter metric emitted to StatsD:
@@ -190,21 +202,20 @@ Now, when we run our Phoenix server and visit the landing page, we see the follo
 "phoenix.router_dispatch.stop.count:1|c|#plug:Elixir.QuantumWeb.PageController,plug_opts:index,status:200"
 ```
 
-Notice that now the metric is tagged with the response status. This will make it easy for us to visualize counts of failed and succeeded requests in Datadog.
+Notice that now the metric is tagged with the response status. This will make it easy for us to visualize counts of failed and successful requests in Datadog.
 
-### Additional Phoenix Telemetry Events
+### More Phoenix Telemetry Events
 
 So far, we've taken advantage of just one of several Telemetry events executed by Phoenix source code. There are a number of helpful events we can have our Telemetry pipeline handle. Let's take a brief look at some of these events now.
 
-#### The Error Rendered Telemetry Event
+#### The `[:phoenix, :error_rendered]` Telemetry Event
 
 The `Phoenix.Endpoint.RenderErrors` module executes a Telemetry event after rendering the error view. We can see the call to execute this event in source code [here](https://github.com/phoenixframework/phoenix/blob/00a022fbbf25a9d0845329161b1bc1a192c2d407/lib/phoenix/endpoint/render_errors.ex#L81):
 
 ```elixir
+# phoenix/lib/phoenix/endpoint/render_errors.ex
+
 defp instrument_render_and_send(conn, kind, reason, stack, opts) do
-  level = Keyword.get(opts, :log, :debug)
-  status = status(kind, reason)
-  conn = error_conn(conn, kind, reason)
   start = System.monotonic_time()
   metadata = %{status: status, kind: kind, reason: reason, stacktrace: stack, log: level}
 
@@ -220,6 +231,8 @@ end
 We can tell our Telemetry pipeline to handle this event as a counter and tag it with the request path and response status in our `Quantum.Telemetry.metrics/0` function like this:
 
 ```elixir
+# lib/quantum/telemetry.ex
+
 def metrics do
   [
     counter(
@@ -241,13 +254,14 @@ Now, we'll see the following counter metric incremented in StatsD when a user vi
 "phoenix.error_rendered.count:1|c|#request_path:blah,status:404"
 ```
 
-#### `Phoenix.Socket` and `Phoenix.Channel` Telemetry Events
+#### `Phoenix.Socket` Telemetry Event
 
 Phoenix also provides some out-of-the-box instrumentation for Socket and Channel interactions.
 
 The `Phoenix.Socket` module executes a Telemetry event whenever the socket is connected to. We can see that event in source code [here](https://github.com/phoenixframework/phoenix/blob/e83b6291cb4ed7cd6572b7af274842910667ade3/lib/phoenix/socket.ex#L450):
 
 ```elixir
+# phoenix/lib/phoenix/socket.ex
 def __connect__(user_socket, map, socket_options) do
     %{
       endpoint: endpoint,
@@ -291,6 +305,8 @@ We can see that the event is executed with the duration measurement and a metada
 For example:
 
 ```elixir
+# lib/quantum/telemetry.ex
+
 def metrics do
   [
     counter(
@@ -303,11 +319,15 @@ end
 
 Now we will increment a StatsD metric every time the socket is joined.
 
-The `Phoenix.Channel.Server` module executes two Telemetry events--one for the channel join and one whenever the channel invokes `handle_info/2`.
+### `Phoenix.Channel` Telemetry Events
 
-We can see the "channel join" Telemetry event in source code [here](https://github.com/phoenixframework/phoenix/blob/8a4aa4eed0de69f94ab09eca157c87d9bd204168/lib/phoenix/channel/server.ex#L302):
+The `Phoenix.Channel.Server` module executes two Telemetry events--one when the channel is joined and one whenever the channel invokes `handle_info/2`.
+
+We can see the `[:phoenix, :channel_joined]` Telemetry event in source code [here](https://github.com/phoenixframework/phoenix/blob/8a4aa4eed0de69f94ab09eca157c87d9bd204168/lib/phoenix/channel/server.ex#L302):
 
 ```elixir
+# phoenix/lib/phoenix/channel/server.ex
+
 def handle_info({:join, __MODULE__}, {auth_payload, {pid, _} = from, socket}) do
   %{channel: channel, topic: topic, private: private} = socket
 
@@ -321,18 +341,23 @@ def handle_info({:join, __MODULE__}, {auth_payload, {pid, _} = from, socket}) do
 end
 ```
 
-And we can see the "channel handled in" event [here](https://github.com/phoenixframework/phoenix/blob/8a4aa4eed0de69f94ab09eca157c87d9bd204168/lib/phoenix/channel/server.ex#L319)
+And we can see the `[:phoenix, channel_handled_in]` event [here](https://github.com/phoenixframework/phoenix/blob/8a4aa4eed0de69f94ab09eca157c87d9bd204168/lib/phoenix/channel/server.ex#L319)
 
 ```elixir
+# phoenix/lib/phoenix/channel/server.ex
+
 def handle_info(
     %Message{topic: topic, event: event, payload: payload, ref: ref},
     %{topic: topic} = socket
   ) do
   start = System.monotonic_time()
+
   result = socket.channel.handle_in(event, payload, put_in(socket.ref, ref))
   duration = System.monotonic_time() - start
   metadata = %{ref: ref, event: event, params: payload, socket: socket}
+
   :telemetry.execute([:phoenix, :channel_handled_in], %{duration: duration}, metadata)
+
   handle_in(result)
 end
 ```
@@ -345,7 +370,9 @@ Now that we've taken a brief tour of Phoenix Telemetry events, let's hook up som
 
 Ecto provides some out-of-the-box instrumentation for queries. Let's take a look at and define metrics for some of these Telemetry events now.
 
-Ecto will execute a Telemetry event, [`[:my_app, :repo, :query]`](https://github.com/elixir-ecto/ecto/blob/2aca7b28eef486188be66592055c7336a80befe9/lib/ecto/repo.ex#L117) for every query sent to the Ecto adapter. It will emit this event with a measurements map that contains the following:
+Ecto will execute a Telemetry event, [`[:my_app, :repo, :query]`](https://github.com/elixir-ecto/ecto/blob/2aca7b28eef486188be66592055c7336a80befe9/lib/ecto/repo.ex#L117) for every query sent to the Ecto adapter. It will emit this event with a measurement map and a metadata map.
+
+The measurement map will include:
 
 ```
 * `:idle_time` - the time the connection spent waiting before being checked out for the query
@@ -355,7 +382,7 @@ Ecto will execute a Telemetry event, [`[:my_app, :repo, :query]`](https://github
 * `:total_time` - the sum of the other measurements
 ```
 
-It will emit this event with a metadata map that includes:
+The metadata map will includes:
 
 ```
 * `:type` - the type of the Ecto query. For example, for Ecto.SQL
@@ -418,14 +445,16 @@ This will report timing metrics to StatsD for each query executed with a given c
 "quantum.repo.query.total_time:1.7389999999999999|ms|#source:users,command:select"
 ```
 
-## Additional Metrics
+## More Metrics
 
-This post has mainly focused on the `counter` and `summary` `Telemetry.Metrics` functions, each of which increment a count or report a timing metric to StatsD respectively. `Telemetry.Metrics` implements five metrics functions, each of which map to a specific metric type. To learn how to define and report on these various metric types, check out the docs [here](https://hexdocs.pm/telemetry_metrics/Telemetry.Metrics.html#module-metrics) and [here](https://hexdocs.pm/telemetry_metrics_statsd/TelemetryMetricsStatsd.html)
+This post has mainly focused on the `counter/2` and `summary/2` `Telemetry.Metrics` functions, corresponding to the "count" and "timing" StatsD metric type respectively. `Telemetry.Metrics` implements five metrics functions, each of which map to a specific metric type. To learn how to define and report on these various metric types, check out the docs [here](https://hexdocs.pm/telemetry_metrics/Telemetry.Metrics.html#module-metrics) and [here](https://hexdocs.pm/telemetry_metrics_statsd/TelemetryMetricsStatsd.html)
 
 ## Conclusion
 
-Instrumenting our Phoenix app by taking advantage of the Telemetry events that are executed for us by Phoenix and Ecto source code allowed us to achieve a high degree of observability without writing a lot of custom code.
+Instrumenting our Phoenix app by taking advantage of the Telemetry events that are executed for us by Phoenix and Ecto allowed us to achieve a high degree of observability without writing a lot of custom code.
 
-We simply defined our `Telemetry.Metrics` module, configured it to start up the `TelemetryMetricsStatsd` reporter and defined the list of Telemetry events to observe as metrics. Now we're reporting a valuable set of information-rich metrics to StatsD, formatted for Datadog, without manually executing a single Telemetry event or defining any of our own event handlers.
+We simply defined our `Telemetry.Metrics` module, configured it to start up the `TelemetryMetricsStatsd` reporter and defined the list of existing Telemetry events to observe as metrics. Now we're reporting a valuable set of information-rich metrics to StatsD, formatted for Datadog, without manually executing a single Telemetry event or defining any of our own event handlers.
 
-There's one more flavor of out-of-the-box metrics reporting we'll explore in this series. In our next post, we'll use the `telemetry_poller` Erlang library to emit Erlang VM Telemetry events and we'll use `Telemetry.Metrics` and `TelemetryMetricsStatsd` to observe and report those events as metrics.
+## Next Up
+
+There's one more flavor of out-of-the-box metrics reporting we'll explore in this series. In our [next post](TBD), we'll use the `telemetry_poller` Erlang library to emit Erlang VM measurements as Telemetry events and we'll use `Telemetry.Metrics` and `TelemetryMetricsStatsd` to observe and report those events as metrics.

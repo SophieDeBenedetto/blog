@@ -434,7 +434,7 @@ quantum.phoenix.request:21000|ms|#/register/new
 
 We won't dig into solving this problem now. Instead, we're highlighting the fact that metrics reporting is complex. It's a hard problem to solve and we could easily throw many hours and lots of code at it.
 
-### Event Emitting + Reporting Pitfalls. Or: This Seems Hard...
+### Conclusion
 
 This seems hard. Is this too hard?
 
@@ -446,7 +446,7 @@ Our reporting mechanism, currently set up to send metrics to StatsD, is also a l
 
 "Wait a minute", you might be thinking, "I thought Telemetry was supposed to standardize instrumentation events and make it fast and easy to operate on and report those events. Why do I _still_ have to emit _all_ my own events and be on the hook for _all_ of my reporting needs?"
 
-### Up Next...
+### Next Up
 
 Well the answer is, you _don't_ have to emit all of your own events _or_ be responsible for all of your reporting! Now that we understand _how_ to set up a Telemetry pipeline, and how it works under the hood to store and execute callbacks for events using ETS, we're ready to rely on some handy abstractions that additional Telemetry libraries provide.
 
@@ -454,6 +454,6 @@ Surprise! Phoenix and Ecto are *already* emitting common events from source code
 
 Further, Telemetry provides a number of reporting clients, including a StatsD reporter, that we can plug into our `Telemetry.Metrics` module for free metrics reporting to StatsD _or_ DogStatsD, allowing us to take advantage of event metadata with tagging.
 
-In the next post, we'll leverage Telemetry Metrics and the Telemetry Statsd Reporter to observe, format and report the Telemetry event we established here. In doing so, we'll abstract away the need for our custom handler _and_ our custom StatsD reporter.
+In the [next post](TBD), we'll leverage Telemetry Metrics and the Telemetry Statsd Reporter to observe, format and report the Telemetry event we established here. In doing so, we'll abstract away the need for our custom handler _and_ our custom StatsD reporter.
 
 See you soon!
