@@ -45,7 +45,11 @@ First, we'll take a look at how to set up a simple reporting pipeline for custom
 
 ### Getting Started
 
-You can follow along with this tutorial by cloning down the repo [here](https://github.com/SophieDeBenedetto/quantum/tree/part-1-start). Our Phoenix app, Quantum (get it?), is pretty simple--users can sign up, log in and click some buttons. Awesome, right? Really this dummy app just exists to be instrumented so it doesn't do much, sorry.
+You can follow along with this tutorial by cloning down the repo [here](https://github.com/SophieDeBenedetto/quantum/tree/part-1-start).
+* Checkig out the starting state of our code on the branch [part-1-start](https://github.com/SophieDeBenedetto/quantum/tree/part-1-start)
+* Find the solution code on the branch [part-1-solution](https://github.com/SophieDeBenedetto/quantum/tree/part-1-solution)
+
+Our Phoenix app, Quantum (get it?), is pretty simple--users can sign up, log in and click some buttons. Awesome, right? Really this dummy app just exists to be instrumented so it doesn't do much, sorry.
 
 ### Overview
 

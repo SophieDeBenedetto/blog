@@ -6,7 +6,7 @@ In part I of this series, we learned why observability is important and introduc
 
 In our previous post, we added some Telemetry instrumentation to our Phoenix app, Quantum. To recap, we established a Telemetry event, `[:phoenix, :request]`, that we attached to a handler module, `Quantum.Telemetry.Metrics`. We executed this event from just one controller action--the `new` action of the `UserController`.
 
-From that controller action, we execute the Telemetry event with a measurement map that includes the duration of the web request, along with the request `conn`:
+From that controller action, we execute the Telemetry event with a measurement map that includes the duration of the web request along with the request `conn`:
 
 ```elixir
 # lib/quantum_web/controllers/user_controller.ex
@@ -18,7 +18,20 @@ def new(conn, _params) do
 end
 ```
 
-We handle this event in our handler module, `Quantum.Telemetry.Metric`, with the `handle_event/4` callback function. In this function we use the event data, including the duration and information in the `conn` to, send a set of metrics to StatsD with the help of the `Statix` Elixir StatsD client library.
+We handle this event in our handler module, `Quantum.Telemetry.Metric`, with the `handle_event/4` callback function. In this function we use the event data, including the duration and information in the `conn` to, send a set of metrics to StatsD with the help of the `Statix` Elixir StatsD client library:
+
+```elixir
+# lib/quantum/telemetry/metrics.ex
+defmodule Quantum.Telemetry.Metrics do
+  require Logger
+  alias Quantum.Telemetry.StatsdReporter
+
+  def handle_event([:phoenix, :request], %{duration: dur}, metadata, _config) do
+    StatsdReporter.increment("phoenix.request.success", 1)
+    StatsdReporter.timing("phoenix.request.success", dur)
+  end
+end
+```
 
 ## What's Wrong With This?
 
@@ -32,11 +45,13 @@ In order for that callback function report metrics to StatsD for a given event, 
 
 Wouldn't it be great if we _didn't_ have to define our own handler modules or metric reporting logic? If only there was some way to simply list the Telemetry events we care about and have them automatically reported to StatsD as the correctly formatted metric...
 
-This is exactly where the `Telemetry.Metrics` and Telemetry reporting libraries come in!
+This is exactly where the `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries come in!
 
-## Introducing `Telemetry.Metrics` and Telemetry Reporters
+## Introducing `Telemetry.Metrics` and `TelemetryMetricsStatsd`
 
-The `Telemetry.Metrics` library allows us declare the set of Telemetry events that we want to handle and specify an out-of-the-box reporter with which to handle them. This means we _don't_ have to define our own handler modules and functions and we _don't_ have to write any code responsible for reporting metrics for events to common third-party tools StatsD.
+The [`Telemetry.Metrics` library](https://hexdocs.pm/telemetry_metrics/Telemetry.Metrics.html) provides a common interface for defining metrics based on Telemetry events. It allows us declare the set of Telemetry events that we want to handle and specify which metrics to construct for these events. It also allows us to specify an out-of-the-box reporter with which to handle and report our events to third-parties.
+
+This means we _don't_ have to define our own handler modules and functions and we _don't_ have to write any code responsible for reporting metrics for events to common third-party tools like StatsD. We'll report our metrics to StatsD with the `TelemetryMetricsStatsd` reporting library, but Elixir's Telemetry family of libraries also includes a reporter for Prometheus, or you can roll your own.
 
 In the previous post, we added code to execute the following Telemetry event from the `new` action of our `UserController`:
 
@@ -45,14 +60,6 @@ In the previous post, we added code to execute the following Telemetry event fro
 ```
 
 Now, instead of handling this event with our custom handler and `Statix` reporter, will use `Telemetry.Metrics` and the `TelemetryMetricsStatsd` reporter to do all of the work for us!
-
-## Getting Started
-
-In the rest of this post, we'll cover how to use the `Telemetry.Metrics`  and `TelemetryMetricsStatsd` libraries to handle our event.
-
-As we set up our Telemetry pipeline with these tools, we'll take peeks under the hood of source code to understand _how_ these libraries work together with Erlang's Telemetry library to attach and execute events.
-
-To follow along with this tutorial, you can clone down the example app [here]().
 
 ## How It Works
 
@@ -66,7 +73,13 @@ Later, when a Telemetry event is executed via a call to `:telemetry.execute/3`, 
 
 Most of this happens under the hood. We are only on the hook for defining a `Telemetry.Metrics` module and listing the Telemetry events we want to handle as which type of metric. That's it!
 
-## Roadmap
+## Getting Started
+
+You can follow along with this tutorial by cloning down the repo [here](https://github.com/SophieDeBenedetto/quantum/tree/part-2-start).
+* Checkig out the starting state of our code on the branch [part-2-start](https://github.com/SophieDeBenedetto/quantum/tree/part-2-start)
+* Find the solution code on the branch [part-2-solution](https://github.com/SophieDeBenedetto/quantum/tree/part-2-solution)
+
+## Overview
 
 In order to get this Telemetry pipeline up and running, we don't have to write too much code.
 
@@ -96,7 +109,7 @@ Now we're ready to define a module that imports `Telemetry.Metrics`.
 
 ## Step 1: Defining a Metrics Module
 
-We'll define a module that imports the `Telemetry.Metrics` library and acts as a supervisor. Our supervisor will start up the child GenServer provided by the `TelemetryMetricsStatsd` reporter. It will start that GenServer along with an argument of the list of Telemetry events to listen for, structured as metrics, via the `:metrics` option.
+We'll define a module that imports the `Telemetry.Metrics` library and acts as a Supervisor. Our Supervisor will start up the child GenServer provided by the `TelemetryMetricsStatsd` reporter. It will start that GenServer along with an argument of the list of Telemetry events to listen for, structured as metrics, via the `:metrics` option.
 
 We'll place our metrics module in `lib/quantum/telemetry.ex`
 
@@ -125,7 +138,7 @@ defmodule Quantum.Telemetry do
 end
 ```
 
-We'll come back to the metrics list in a bit. First, let's teach our application to start this supervisor when the app starts up but adding it to our application's supervision tree in the `Quantum.Application.start/2` function:
+We'll come back to the metrics list in a bit. First, let's teach our application to start this Supervisor when the app starts up but adding it to our application's supervision tree in the `Quantum.Application.start/2` function:
 
 ```elixir
 # lib/quantum/application.ex
@@ -145,7 +158,7 @@ Now we're ready to specify which Telemetry events to handle as metrics.
 
 ## Step 2: Specifying Events As Metrics
 
-Our `Telemetry.Metrics` module, `Quantum.Telemetry`, is responsible for telling the `TelemetryMetricsStatsd` GenServer which Telemetry events to respond to and how to treat each event as a specific type of metric
+Our `Telemetry.Metrics` module, `Quantum.Telemetry`, is responsible for telling the `TelemetryMetricsStatsd` GenServer which Telemetry events to respond to and how to treat each event as a specific type of metric.
 
 We want to handle the `[:phoenix, :request]` event described above. First, let's consider what type of metrics we want to report for this event. Let's say we want to increment a counter for each such event, thereby keeping track of the number of requests our app receives to the endpoint. Let's also send a timing metric to report the duration of a given web request.
 
@@ -166,20 +179,42 @@ defp metrics do
     summary(
       "phoenix.request.duration",
       unit: {:native, :millisecond},
-      tags: [:plug, :plug_opts]
+      tags: [:request_path]
     ),
 
     counter(
       "phoenix.request.count",
-      tags: [:plug, :plug_opts]
+      tags: [:request_path]
     )
   ]
 end
 ```
 
+Each metric function takes in two arguments:
+
+* The event name
+* A list of options
+
+And returns a struct that describes the given metric type. For example, the `counter/2` function returns a [`%Telemetry.Metrics.Counter{}` struct](https://hexdocs.pm/telemetry_metrics/Telemetry.Metrics.Counter.html#content) that looks like this:
+
+```elixir
+%Telemetry.Metrics.Counter{
+  description: Telemetry.Metrics.description(),
+  event_name: :telemetry.event_name(),
+  measurement: Telemetry.Metrics.measurement(),
+  name: Telemetry.Metrics.normalized_metric_name(),
+  reporter_options: Telemetry.Metrics.reporter_options(),
+  tag_values: (:telemetry.event_metadata() -> :telemetry.event_metadata()),
+  tags: Telemetry.Metrics.tags(),
+  unit: Telemetry.Metrics.unit()
+}
+```
+
+Now that we've defined our metrics list, we're ready for the next step.
+
 ## Step 3: Start The `TelemetryMetricsStatsd` GenServer with the Metrics List
 
-Each metric function returns a struct that describes the given metric type. This list of structs is what get's passed to the `TelemetryMetricsStatsd` GenServer when it gets started up:
+The list of metrics structs gets passed to the `TelemetryMetricsStatsd` GenServer when it gets started up:
 
 ```elixir
 defmodule Quantum.Telemetry do
@@ -192,7 +227,7 @@ defmodule Quantum.Telemetry do
 
   def init(_arg) do
     children = [
-      {TelemetryMetricsStatsd, metrics: metrics()}
+      {TelemetryMetricsStatsd, metrics: metrics()} # here!
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -203,24 +238,26 @@ defmodule Quantum.Telemetry do
       summary(
         "phoenix.request.duration",
         unit: {:native, :millisecond},
-        tags: [:plug, :plug_opts]
+        tags: [:request_path]
       ),
 
       counter(
         "phoenix.request.count",
-        tags: [:plug, :plug_opts]
+        tags: [:request_path]
       )
     ]
   end
 end
 ```
 
-Each metric function takes in two arguments:
+This kicks off the following process:
 
-* The event name
-* A list of options
+* When the `TelemetryMetricsStatsd` starts, it stores events in ETS along with their handler _and_ a config map including this list of metric structs.
+* Later, when `TelemetryMetricsStatsd` is responding to executed events, it looks up the event in ETS and uses the metrics structs stored in that config map to format the appropriate metrics for sending to StatsD
 
-Here, we're using the `:tag` option to specify which tags will be applied to the metric when it gets sent to StatsD. The `TelemetryMetricsStatsD` reporter will, when it receives our `[:phoenix, :request]` event, grab any values for the tag keys present in the event metadata and use them to construct the metric.
+### Seeing It In Action
+
+Note that in our call to `counter/2` and `summary/2`, we're using the `:tag` option to specify which tags will be applied to the metric when it gets sent to StatsD. The `TelemetryMetricsStatsD` reporter will, when it receives our `[:phoenix, :request]` event, grab any values for the tag keys that are present in the event metadata and use them to construct the metric.
 
 So, when we execute our Telemetry with the `conn` passed in as the metadata argument:
 
@@ -231,22 +268,21 @@ def new(conn, _params)
 end
 ```
 
-The `TelemetryMetricsStatsD` will format a counter and summary metric tagged with the values of the `:plug` and `:plug_opts` keys found in the `conn`.
+The `TelemetryMetricsStatsD` will format a counter and summary metric tagged with the value of the `:request_path` key found in the `conn`.
 
-### Seeing It In Action
 
-Now, if we run our app and send some web requests, we'll see the following metrics reported to StatsD:
+So, if we run our app and send some web requests, we'll see the following metrics reported to StatsD:
 
 ```
 {
   counters: {
-    'phoenix.request.count.Elixir.QuantumWeb.UserController.new': 2,
+    'phoenix.request.count.-register-new': 2,
   },
   timers: {
-    'phoenix.request.count.Elixir.QuantumWeb.UserController.new': [ 0, 0 ],
+    'phoenix.request.count.-register-new': [ 0, 0 ],
   },
   timer_data: {
-    'phoenix.request.duration.Elixir.QuantumWeb.UserController.new': {
+    'phoenix.request.duration.-register-new': {
       count_90: 2,
       mean_90: 0,
       upper_90: 0,
@@ -266,8 +302,6 @@ Now, if we run our app and send some web requests, we'll see the following metri
 }
 ```
 
-Note that the `TelemetryMetricsStatsd` reporter took the tags and appended them to the metric name. Where it received an event `"phoenix.request"`, it looked up the values of the specified tags--the `:plug` and `:plug_opts` keys--in the event metadata and appended those values to the metric name.
-
 ## Under The Hood
 
 The `Quantum.Telemetry` module is, believe it or not, the _only_ code we have to write in order to send these metrics to StatsD for the `"phoenix.router_dispatch.stop"` event. The Telemetry libraries take care of everything else for us under the hood.
@@ -276,9 +310,10 @@ Let's take a closer look at how it all works.
 
 1. The `Telemetry.Metrics` supervisor that we defined in `Quantum.Telemetry` defines a list of metrics that we want to emit to StatsD for a given Telemetry event.
 2. When the supervisor starts, it starts the `TelemetryMetricsStatsd` GenServer and gives it this list
-3. When the `TelemetryMetricsStatsd` GenServer starts, it calls `:telemetry.attach/4` for each listed event, storing it in an ETS table along with the metric definition and handler module. The handler module it gives to `:telemetry.attach/4` is its own `TelemetryMetricsStatsd.EventHandler` module.
-4. Later, when a Telemetry event is executed via a call to `:telemetry.execute/3`, Telemetry looks up the handler module and metric definition for the given event in ETS and calls the `handle_event/4` callback function on the handler module, `TelemetryMetricsStatsd.EventHandler`.
-5. `TelemetryMetricsStatsd.EventHandler.handle_event/4` is called with the event name, measurement map, metadata and metric info that `:telemetry.execute/3` passes to it. It then formats the appropriate metric using all of this information and sends it to StatsD over UDP
+3. When the `TelemetryMetricsStatsd` GenServer starts, it calls `:telemetry.attach/4` for each listed event, storing it in an ETS table along with the handler callback and a config map that includes the metrics definitions. The handler callback it gives to `:telemetry.attach/4` is its own `TelemetryMetricsStatsd.EventHandler.handle_event/4` function.
+4. Later, when a Telemetry event is executed via a call to `:telemetry.execute/3`, Telemetry looks up the handler callback and config (including metrics definitions) for the given event in ETS.
+5. The `:telemetry.execute/3` function then calls this handler callback, `TelemetryMetricsStatsd.EventHandler.handle_event/4`, with the event name, event measurement map, event metadata and metrics config.
+6. The `TelemetryMetricsStatsd.EventHandler.handle_event/4` function formats the appropriate metric using all of this information and sends it to StatsD over UDP
 
 Phew!
 
@@ -287,9 +322,11 @@ Let's take a deeper dive into this process by taking a look at some source code.
 
 ### `TelemetryMetricsStatsd` Attaches Events to Handlers and Config Data
 
-When our supervisor starts the `TelemetryMetricsStatsd` GenServer, the GenServer's `init/1` function calls on `TelemetryMetricsStatsd.EventHandler.attach/7` with a set of arguments that includes the metrics list we provided. This in turn executes a call to `:telemetry.attach/4`:
+When our supervisor starts the `TelemetryMetricsStatsd` GenServer, the GenServer's `init/1` function calls on [`TelemetryMetricsStatsd.EventHandler.attach/7`](https://github.com/beam-telemetry/telemetry_metrics_statsd/blob/master/lib/telemetry_metrics_statsd/event_handler.ex#L24) with a set of arguments that includes the metrics list we provided. This in turn executes a call to `:telemetry.attach/4`:
 
 ```elixir
+# telemetry_metrics_statsd/lib/telemetry_metrics_statsd/event_handler.ex
+
 def attach(metrics, reporter, mtu, prefix, formatter, global_tags) do
   metrics_by_event = Enum.group_by(metrics, & &1.event_name)
 
@@ -324,13 +361,15 @@ end
 
 The `:telemetry.execute/3` function looks up the event in ETS. It fetches the handler callback function, along with the config that was stored for that event, including the list of metric definitions.
 
-Telemetry will then call the callback function, `TelemetryMetricsStatsd.EventHandler.handle_event/4`, with the measurement map, metadata and stored config.
+Telemetry will then call the callback function, `TelemetryMetricsStatsd.EventHandler.handle_event/4`, with the provided measurement map and metadata, along with stored config it looked up for the event in ETS.
 
 `TelemetryMetricsStatsd.EventHandler.handle_event/4` will format the metric according to the metrics definitions stored in ETS for the event and send the resulting metric to StatsD.
 
-Here we can see that the `TelemetryMetricsStatsd.EventHandler.handle_event/4` iterates over the metric definitions for the event and constructs the appropriate metric from the given event data including the measurement map, metadata map and tagging rules. It then publishes the metric to StatsD over UDP via the call to `publish_metrics/2`
+Here we can see that the [`TelemetryMetricsStatsd.EventHandler.handle_event/4`](https://github.com/beam-telemetry/telemetry_metrics_statsd/blob/master/lib/telemetry_metrics_statsd/event_handler.ex#L46) iterates over the metric definitions for the event and constructs the appropriate metric from the event data using the given measurement and metadata maps along with the metric struct from the list of metrics stored in the config. It then publishes the metric to StatsD over UDP via the call to `publish_metrics/2`
 
 ```elixir
+# telemetry_metrics_statsd/lib/telemetry_metrics_statsd/event_handler.ex
+
 def handle_event(_event, measurements, metadata, %{
       reporter: reporter,
       metrics: metrics,
@@ -342,14 +381,16 @@ def handle_event(_event, measurements, metadata, %{
   packets =
     # iterate over the stored metric definitions
     for metric <- metrics do
+      # get the measurement for the metric type from the measurements map
       case fetch_measurement(metric, measurements) do
         {:ok, value} ->
-          # format the metric according to the specific tag
+          # collect metric tags specified in the metric struct
           tag_values =
             global_tags
             |> Map.new()
             |> Map.merge(metric.tag_values.(metadata))
           tags = Enum.map(metric.tags, &{&1, Map.fetch!(tag_values, &1)})
+          # format the metric given the metric type, value and tags
           Formatter.format(formatter_mod, metric, prefix, value, tags)
 
         :error ->
@@ -371,9 +412,9 @@ end
 
 ## Wrapping Up
 
-The `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries make it even easier for us to handle Telemetry events and report metrics based on those events. All we have to do is define a Supervisor that uses `Telemetry.Metrics` and tell that Supervisor to start the `TelemetryMetricsStatsd` GenServer with a list of metrics.
+The `Telemetry.Metrics` and `TelemetryMetricsStatsd` libraries make it even easier for us to handle Telemetry events and report metrics based on those events. All we have to do is define a Supervisor that uses `Telemetry.Metrics` and tell that Supervisor to start the `TelemetryMetricsStatsd` GenServer with a list of metric definitions.
 
-That's it! The `TelemetryMetricsStatsd` library will take care of calling `:telemetry.attach/3` to store events in ETS along with a handler callback function and the metrics list. Later, when a Telemetry event is executed, Telemetry will lookup the event and its associated handler function and metrics list and invoke the handler function with this data. The handler function, `TelemetryMetricsStatsd.EventHandler.handle_event/4`, will iterate over the list of metric structs that was stored for the event in ETS and construct the appropriate StatsD metric given the metric type and tags, the event measurement map and metadata. All for free!
+That's it! The `TelemetryMetricsStatsd` library will take care of calling `:telemetry.attach/3` to store events in ETS along with a handler callback function and the metrics list for that event. Later, when a Telemetry event is executed, Telemetry will lookup the event and its associated handler function and metrics list and invoke the handler function with this data. The handler function, `TelemetryMetricsStatsd.EventHandler.handle_event/4`, will iterate over the list of metric structs that was stored for the event in ETS and construct the appropriate StatsD metric given the metric type and tags, the event measurement map and metadata. All for free!
 
 
 ## Next Steps
@@ -384,6 +425,6 @@ We're still on the hook for emitting _all_ of our own Telemetry events.
 
 In order to really be able to observe the state of our production Phoenix app, we need to be reporting on much more than just one endpoint's request duration and count. We want to be able to handle information-rich events describing web requests across the app, database queries, the behavior and state of the Erlang VM, the behavior and state of any workers in our app, and more.
 
-Instrumenting all of that by hand, by executing custom Telemetry events wherever we need them will be tedious and time-consuming. On top of that, it will be a challenge to standardize event naming conventions, measurements and metadata across the app.
+Instrumenting all of that by hand, by executing custom Telemetry events wherever we need, them will be tedious and time-consuming. On top of that, it will be a challenge to standardize event naming conventions, measurements and metadata across the app.
 
-In the next post, we'll examine Phoenix and Ecto's out-of-the-box Telemetry events and use `Telemetry.Metrics` to observe a wide-range of such events, elinating the need for us to execute our own custom events for most of our observability use-cases.
+In the next post, we'll examine Phoenix and Ecto's out-of-the-box Telemetry events and use `Telemetry.Metrics` to observe a wide-range of such events, thus eliminating the need for us to execute our own custom events for most of our observability use-cases.
