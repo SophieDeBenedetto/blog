@@ -76,7 +76,7 @@ defp metrics do
 end
 ```
 
-This will establish and send the following metrics to StatsD:
+Now, when `telemetry_poller` executes the corresponding events, we will see the following metrics to StatsD sent to StatsD:
 
 ```
 gauges: {
