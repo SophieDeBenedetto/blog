@@ -1,9 +1,9 @@
 # We're All Project Managers Now
 
 ## Intro
-The transition to remote work means async takes the foreground. Whether, like me, you've transitioned into a remote, distributed company, or your formerly in-person team has gone "remote" during the pandemic, async communication and processes are rapidly taking over. Its especially important to keep in mind that your newly remote team isn't just "working at home"--they're working at home while homeschooling their kids, or navigating an increasingly restricted community (someone please tell me where I can buy face masks, thanks), or dealing stress, family, health issues--you name it. In these situations, we can no longer assume that everyone is able to commit to the same synchronized working hours.
+The transition to remote work means async takes the foreground. Whether, like me, you've transitioned into a remote, distributed company, or your formerly in-person team has gone "remote" during the pandemic, async communication and processes are rapidly taking over. Its especially important to keep in mind that your newly remote team isn't just "working at home"--they're working at home while homeschooling their kids, or navigating an increasingly restricted world (someone please tell me where I can buy face masks, thanks), or dealing with stress, family, health issues--you name it. In these situations, we can no longer assume that everyone is able to commit to the same synchronized working hours.
 
-In this new world, the in-person strategies and tactics we used to manage the development life cycle and reliably deliverable valuable software have fallen away. This creates a set of problems that prevent us from getting stuff done, but luckily there's a solution. Keep reading to learn about the pitfalls of async work and find out how you can combat them by being your own project manager.
+In this new world, the in-person strategies and tactics we used to manage the development life cycle and reliably deliverable valuable software are not longer available to us. This creates a set of problems that prevent us from getting stuff done, but luckily there's a solution. Keep reading to learn about the pitfalls of async work and find out how you can combat them by being your own project manager.
 
 ## The Dangers of Remote, Async Work
 
