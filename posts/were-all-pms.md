@@ -49,7 +49,7 @@ By clearly defining what "done" looks like, we give ourselves the tool to combat
 
 Similarly, our clear picture of "done" helps us combat missed deliverables. When your product manager and/or tech lead signs off on what "done" looks like, you avoid pre-launch surprises in which a startled product manager may say: "Oh no! We're not ready to launch this feature, I thought it would _also_ do X!"
 
-At GitHub, we use GitHub (surprise) to manage our project development life cycle. This means we write GitHub issues to document our work on a given project. My team uses issue templates to ensure any unit of engineering work comes with a written deliverable. In this way, engineers are adopting a project management mindset and using async, written communication to help keep our projects on track.
+At GitHub, we use GitHub (surprise) to manage our project development life cycle. This means we write GitHub issues to document our work on a given project. My team uses templates to structure our issues and we've recently adopted a template with a build-int "Deliverable" section. In this way, engineers are adopting a project management mindset and using async, written communication to help keep our projects on track.
 
 ## The Problem: Isolation
 
