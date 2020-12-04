@@ -107,7 +107,14 @@ Now that we have a basic understanding of what we need to do, let's write some c
 
 ### Pattern Matching List Elements: The Code
 
-We'll define a module `Accountant`, that implements one public function, `product_of_equals_twenty_twenty`. This function will take in a list and return the product of the two numbers in the list the sum to `2020`.
+We'll define a module `Accountant`, that implements one public function, `product_of_equals_twenty_twenty`. This function will take in a list and return the product of the two numbers in the list the sum to `2020`. The public interface of our module will work like this:
+
+```elixir
+Accountant.product_of_equals_twenty_twenty([979, 1721, 366, 299, 675, 1456])
+=> 514_579
+```
+
+Let's begin implementing it now.
 
 ```elixir
 defmodule Accountant do
@@ -391,6 +398,32 @@ end
 ```
 
 Custom guard clauses give us the ability to implement even complex control flow with pattern matching function heads, while keeping our code readable and easy to reason about.
+
+Putting it all together:
+
+```elixir
+defmodule Accountant do
+  @sum 2020
+  defguard equals_twenty_twenty(first, second) when first + second == @sum
+
+  def product_of_equals_twenty_twenty(list, product \\ nil)
+  def product_of_equals_twenty_twenty(_list, product) when product != nil, do: product
+
+  def product_of_equals_twenty_twenty([_head | tail] = list, _product) do
+    product_of_equals_twenty_twenty(tail, get_two(list))
+  end
+
+  defp get_two(list) when length(list) == 1, do: nil
+
+  defp get_two([first | [second | _rest]]) when equals_twenty_twenty(first, second) do
+    first * second
+  end
+
+  defp get_two([first | [_second | rest]]) do
+    get_two([first | rest])
+  end
+end
+```s
 
 ## Elixir Superpowers Make for Squeaky Clean, Highly Performant Code
 pattern matching function heads, guard clauses and custom guard clauses paired with recursion allows us to implement control flow in a way that is sane and readable--no nested if conditions.
