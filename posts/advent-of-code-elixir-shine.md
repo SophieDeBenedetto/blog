@@ -18,8 +18,10 @@ I had a lot of fun putting my solution together and, unsurprisingly, I found tha
 The Day 1 Advent of Code prompt can be simply stated as:
 
 > Find the two elements in a given list that sum to 2020 and return the product of those two numbers.
+
 > For example, of the following list: [979, 1721, 366, 299, 675, 1456],
 > 1721 + 299 = 2020, and 1721 * 299 = 514579.
+
 > So, your code should return 514579
 
 ## Attempt 1: Lots of Iterating
@@ -46,7 +48,7 @@ This approach uses nested iteration and is not very efficient. For each item in 
 
 So, the number of operations your code has to do will grow exponentially for each element added to the list. This represents a high degree of time complexity. Thanks to Elixir, we can do better.
 
-We'll use recursion and pattern matching to avoid the need to perform nested iterations. Keep reading to find out how!
+We'll use recursion and pattern matching to avoid the need to perform 💸 💸 💸 expensive nested iterations 💸 💸 💸. Keep reading to find out how!
 
 ## Attempt 2: Pattern Matching, Recursion and Guard Clauses
 Once I recognized the time complexity of the "lots of iterating" approach, I knew I needed to cut down on iterations. Luckily, Elixir provides us a way to pull elements from a list without iterating over that list--pattern matching.
@@ -454,8 +456,8 @@ end
 ```
 
 ## Elixir Encourages Efficient and Eloquent Code
-By using Elixir's pattern matching against our list of numbers, we were able to write efficient code that avoided the time complexity of nested iterations.
+By using Elixir's pattern matching against our list of numbers, we were able to write efficient code that avoided the time complexity of expensive nested iterations.
 
-By using that same pattern matching feature, paired with guard clauses and recursion, we were able to implement complex logic and control flow in a way that is eloquent. The code speaks for itself by being readable and easy to reason about. No messy, nested `if` conditions to deal with.
+By using that same pattern matching feature, paired with guard clauses and recursion, we were able to implement complex logic and control flow in a way that is 🧼 clean 🧼 and 🗣 eloquent 🗣. The code speaks for itself by being readable and easy to reason about. No messy, nested `if` conditions to deal with.
 
 This Advent of Code challenge really shows off some of Elixir's simplest, but most powerful features.
