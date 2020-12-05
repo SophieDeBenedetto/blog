@@ -1,4 +1,5 @@
-While tackling the Day 1 challenge from this year's Advent of Code in Elixir, I was reminded of a few of the many ways that Elixir let's us write clean, concise and elegant code. In this post, I break down my solution and dive into how you can use recursion, pattern matching and custom guard clauses to write the cleanest, shiniest code in Elixir.
+# Eloquent Control Flow and Efficient Time Complexity with Elixir
+While tackling the Day 1 challenge from this year's Advent of Code in Elixir, I was reminded of some of the many ways that Elixir let's us write concise, efficient, and eloquent code. In this post, I break down my solution and dive into how you can use recursion, pattern matching and custom guard clauses to implement even complex logic and control flow in an easy-to-reason about way that also avoids common time complexity pitfalls.
 
 ## Advent of Code Challenge
 [Advent of Code](https://adventofcode.com/2020/about) is...
@@ -9,9 +10,9 @@ You can complete Advent of Code challenges in any language and submit your answe
 
 It's a fun way to play around with a new language that you're just starting to learn or to refine your skills in a language that you're familiar with.
 
-After being ~pestered~ kindly reminded about it by [someone is definitely not annoying](https://hostiledeveloper.com/), I decided to try out the Day 1 puzzle in Elixir.
+After being ~pestered~ kindly reminded about it by [someone who is definitely not annoying](https://hostiledeveloper.com/), I decided to try out the Day 1 puzzle in Elixir.
 
-I had a lot of fun putting my solution together and, unsurprisingly, I found that Elixir's tooling allowed me to write code that was remarkably clean and concise. Keep reading to see how to leverage pattern matching, recursion and custom guard clauses to write some super shiny and extremely elegant Elixir code. :soap: :star: :soap:
+I had a lot of fun putting my solution together and, unsurprisingly, I found that Elixir's tooling allowed me to implement even complex logic and control flow in a way that was remarkably concise and efficient with regards to time complexity. Keep reading to see how to leverage pattern matching, recursion and custom guard clauses to write some super clean and extremely elegant Elixir code. :soap: :star: :soap:
 
 ## The Prompt
 The Day 1 Advent of Code prompt can be simply stated as:
@@ -41,23 +42,40 @@ Okay, move on to the second element in the list...
 * Does 1721 + 366 = 2020? Nope!
 * ...
 
-This approach is not very efficient. For each item in the list you have to iterate over the remainder of the list. So, the number of operations your code has to do equal to the number of inputs (n) times itself (n squared), expressed as Order n squared or O(N2) in [Big O notation](http://pages.cs.wisc.edu/~vernon/cs367/notes/3.COMPLEXITY.html#bigO). This represents a high degree of time complexity. Thanks to Elixir, we can do better.
+This approach uses nested iteration and is not very efficient. For each item in the list you have to iterate over the remainder of the list and execute the check to see if the two numbers sum to `2020`. In other words, the _outer loop_ executes N times, once for each element in the list. And every time the outer loop executes, the inner loop executes M times, where M is however many steps it must complete to check the current outer loop element against the remaining list elements. As a result, the "check to see if the two numbers sum to `2020`" statement executes a total of N * M times.
+
+So, the number of operations your code has to do will grow exponentially for each element added to the list. This represents a high degree of time complexity. Thanks to Elixir, we can do better.
 
 We'll use recursion and pattern matching to avoid the need to perform nested iterations. Keep reading to find out how!
 
 ## Attempt 2: Pattern Matching, Recursion and Guard Clauses
-Once I recognized the O(N2) complexity of the "lots of iterating" approach, I knew I needed to cut down on iterations. Luckily, Elixir provides us a way to pull elements from a list without iterating over that list--pattern matching.
+Once I recognized the time complexity of the "lots of iterating" approach, I knew I needed to cut down on iterations. Luckily, Elixir provides us a way to pull elements from a list without iterating over that list--pattern matching.
+
+## Efficient Code with Pattern Matching
+First, let's walk through how Elixir's pattern matching can be applied to list elements such that we can compare all the items in our list _without_ iterating. This will give us the ability to solve our Advent of Code problem with code that is not overly time-complex.
 
 ### Pattern Matching List Elements: The Concept
 
-In order to illustrate how we can use pattern matching in this way, let's focus on the goal of checking to see if the first element in our list, plus any other element in the list, equals 2020.
+In order to illustrate how we can use pattern matching in this way, let's focus on the goal of checking to see if the first element in our list, plus any other element in the list, equals `2020`.
 
-With Elixir's pattern matching, we can separate out list elements like this:
+With Elixir's pattern matching, we can separate out list elements into a "head", i.e. the first element, and a "tail", i.e. everything after the first element.
+
+Something like this:
+
+```elixir
+iex> [head | tail] = [1, 2, 3]
+iex> head
+1
+iex> tail
+[2, 3]
+```
+
+Using this approach, we can match a variable to the first list element, the second list element, and then everything else like this:
 
 ```elixir
 iex> list = [979, 1721, 366, 299, 675, 1456]
 [979, 1721, 366, 299, 675, 1456]
-iex> [first | [second | rest]] = list
+iex> [first | [second | rest] = tail] = list
 [979, 1721, 366, 299, 675, 1456]
 iex> first
 979
@@ -65,13 +83,15 @@ iex> second
 1721
 iex> rest
 [366, 299, 675, 1456]
+iex> tail
+[1721, 366, 299, 675, 1456]
 ```
 
 In this way, we can establish a variable, `first`, set equal to the first list element, and another variable, `second`, bound to the value of the second list element.
 
-Then, we can check if the sum of these two numbers equals 2020. If so, great! We're done.
+Then, we can check if the sum of these two numbers equals `2020`. If so, great! We're done.
 
-If _not_, we can re-construct a new list using the _same_ first element, and the list remainder stored in `rest`, cutting out the second element entirely.
+If _not_, we can construct a new list using the _same_ first element, and the list remainder stored in `rest`, cutting out the second element entirely.
 
 Like this:
 
@@ -91,23 +111,25 @@ iex> second
 366
 ```
 
-From here, we repeat the process. Does `first + second == 2020`? If so, great! We're done. If not...reconstruct a new list using the same first element, and the list remainder stored in rest.
+From here, we repeat the process. Does `first + second == 2020`? If so, great! We're done. If not...construct a new list using the same first element, and the list remainder stored in rest.
 
 Eventually, if the first element cannot be added to any other list element to get the sum of `2020`, then we end up with a list that contains only one element. We'll have cut out all the other elements until only the first element remains.
 
-What do we want to do then? We want to revisit the _initial starting list_ and pick up with the _second_ element there. Treating _that_ element as the first in the list, we want to repeat the process.
+What do we want to do then? We want to revisit the _initial starting list_ and pick up with the _second_ element there. The tail of the original list will be a list that _starts_ with the original list's second element.
 
-In other words, if our original list read `[979, 1721, 366, 299, 675, 1456]`, and we didn't find any other number added to `979` to equal `2020`, then our _new_ list should read:
+In other words, if our original list read `[979, 1721, 366, 299, 675, 1456]`, and we didn't find any other number added to `979` to equal `2020`, then the tail of that list should read:
 
 ```elixir
 [1721, 366, 299, 675, 1456]
 ```
 
+So, using _that_ list, we can simply repeat the process described above.
+
 Now that we have a basic understanding of what we need to do, let's write some code.
 
 ### Pattern Matching List Elements: The Code
 
-We'll define a module `Accountant`, that implements one public function, `product_of_equals_twenty_twenty`. This function will take in a list and return the product of the two numbers in the list the sum to `2020`. The public interface of our module will work like this:
+We'll define a module `Accountant`, that implements one public function, `product_of_equals_twenty_twenty`. This function will take in a list and return the product of the two numbers in the list that sum to `2020`. The public interface of our module will work like this:
 
 ```elixir
 Accountant.product_of_equals_twenty_twenty([979, 1721, 366, 299, 675, 1456])
@@ -148,7 +170,7 @@ defmodule Accountant do
 end
 ```
 
-Let's examine each of the versions of this function. One function version pattern matches the first and second elements of the list and uses a guard clause to check if they sum to `2020`. More on guard clauses in a bit.
+Let's examine each of the versions of this function. Some of this code should look familiar from our discussion of pattern matching list elements above. One function version pattern matches the first and second elements of the list and uses a guard clause to check if they sum to `2020`. More on guard clauses in a bit.
 
 ```elixir
 defp get_two([first | [second | _rest]]) when first + second == @sum do
@@ -166,7 +188,7 @@ defp get_two([first | [_second | rest]]) do
 end
 ```
 
-Here, we build a _new_ list constructed from the first list element and the _remainder_ fo the list, minus the second element. That new list is given as an argument to a recursive call to `get_two/1`. This will continue until we either hit the guard clause and return the product of the two elements. Or, until we get down to a list of only one element, in which case we will return `nil`.
+Here, we build a _new_ list constructed from the first list element and the _remainder_ of that list, minus the second element. That new list is given as an argument to a recursive call to `get_two/1`. This will continue until we either hit the guard clause and return the product of the two elements. Or, until we have removed every element after the first one, resulting in a list with a length of `1`. In that case, we will return `nil`.
 
 ```elixir
 defp get_two(list) when length(list) == 1, do: nil
@@ -230,6 +252,8 @@ defmodule Accountant do
 end
 ```
 
+### Putting It All Together
+
 Putting all together, our code reads:
 
 ```elixir
@@ -257,9 +281,11 @@ defmodule Accountant do
 end
 ```
 
+Our code works, and it's highly efficient. We're never iterating over the list, never mind iterating over it in a nested fashion. Instead, we are recursively pulling the first and second elements off of a list, and shrinking the list each step of the way.
+
 This looks pretty clean, but I think we can do even better. Anytime I see an `if` condition in Elixir, I wonder if I can replace it with recursion and pattern matching. Elixir allows us to combine recursion and pattern matching into an elegant solution for control flow. Could we implement `product_of_equals_twenty_twenty` such that it can handle the case of a "found product"? Let's give it a shot!
 
-### Control Flow with Pattern Matching and Recursion
+## Clean Control Flow with Pattern Matching and Recursion
 We'll take a similar approach here to the one we used with our `get_two/1` implementation. A set of function heads will use pattern matching to determine how to behave. One such function will leverage recursion to continue code flow, while other function heads will determine when the code will stop executing and return. In this way, Elixir pairs recursion and pattern matching to implement control flow--without `if` conditions or `while` loops. Let's take a look.
 
 ```elixir
@@ -276,9 +302,9 @@ defmodule Accountant do
 end
 ```
 
-We've changed the arity of `product_of_equals_twenty_twenty` to take in two arguments. The second argument will be the product of the two numbers that sum to `2020`, and it will default to nil.
+We've changed the arity of `product_of_equals_twenty_twenty` to take in two arguments. The second argument will be the product of the two numbers that sum to `2020`, and it will default to `nil`.
 
-So, when this function is invoked with a list,
+So, when our function is invoked with a list,
 
 ```elixir
 Accountant.product_of_equals_twenty_twenty([979, 1721, 366, 299, 675, 1456])
@@ -292,7 +318,7 @@ def product_of_equals_twenty_twenty([_head | tail] = list, _product) do
 end
 ```
 
-Here, we kick off our process by recursively invoking `product_of_equals_twenty_twenty/2` with the _tail_ of the original list and the result of calling `get_two/1` with the original list.
+Here, we kick off the process by recursively invoking `product_of_equals_twenty_twenty/2` with the _tail_ of the original list and the result of calling `get_two/1` with the original list.
 
 If `get_two/1` returns a product that is not `nil`, then we'll find ourselves in this other version of the `product_of_equals_twenty_twenty/1` function:
 
@@ -319,7 +345,7 @@ where `list` evaluates to `[979, 1721, 366, 299, 675, 1456]`, `tail` is set to `
 2. `get_two/1` is called with the `list`
 3. Since `979` is _not_ one of the numbers that sums to `2020`, this call returns `nil`.
 4. So, we call `product_of_equals_twenty_twenty/2` with `tail` and `nil`
-5. This brings us back to this function body:
+5. This brings us back to this same function body:
 
 ```elixir
 def product_of_equals_twenty_twenty([_head | tail] = list, _product) do
@@ -365,19 +391,21 @@ defmodule Accountant do
 end
 ```
 
-In just about a dozen lines of code, we've implement an efficient, iteration-free solution--all thanks to the beauty of Elixir's pattern matching. My using pattern matching in function heads, along with recursion, we were able to implement control flow that didn't rely on `if` conditions or `while` loops. And thanks again to pattern matching, this time with list elements, we were able to avoid time-complex nested iterations.
+In just about a dozen lines of code, we've implement an efficient, iteration-free solution--all thanks to the beauty of Elixir's pattern matching. By pattern matching list elements, we were able to avoid expensive iterations. By using pattern matching in function heads, along with recursion, we were able to implement control flow that didn't rely on `if` conditions or `while` loops.
 
 Before we go, we'll do just a bit more refactoring for readability with the help of custom guard clauses.
 
-### Refactoring with Custom Guard Clauses
+## Refactoring with Custom Guard Clauses
 
-Guard clauses allows us to apply more complex checks to pattern matching function heads. We're using a number of guard clauses throughout this code, for example:
+Guard clauses allows us to apply more complex checks to pattern matching function heads. We're using a number of guard clauses throughout our code, for example:
 
 ```elixir
 defp get_two(list) when length(list) == 1, do: nil
 ```
 
-Guard clauses give us even more fine-grained control of which code to execute under which conditions. This is yet another way that we can implement complex control flow without verbose and hard-to-reason-about `if` and nested `if` conditions.
+Here, we've implement a version of the `get_two/1` function that will execute _if_ the length of the provided `list` argument is equal to `1`.
+
+Guard clauses give us even more fine-grained control over which code to execute under which conditions. This is yet another way that we can implement complex control flow without verbose and hard-to-reason-about `if` and nested `if` conditions.
 
 Only a certain set of expressions are allowed for usage in guard clauses, see docs [here](https://hexdocs.pm/elixir/guards.html#list-of-allowed-expressions). But, we can define custom guard clauses to wrap up more complex guard logic. The guard clause we wrote to check if two numbers sum to `2020` is a great candidate for a custom guard clause. By wrapping up that logic in a custom guard clause, we can name the concept to make it easier to read and reason about.
 
@@ -397,7 +425,7 @@ defp get_two([first | [second | _rest]]) when equals_twenty_twenty(first, second
 end
 ```
 
-Custom guard clauses give us the ability to implement even complex control flow with pattern matching function heads, while keeping our code readable and easy to reason about.
+Custom guard clauses give us the ability to implement even complex control flow with pattern matching function heads, while keeping our code readable.
 
 Putting it all together:
 
@@ -423,9 +451,11 @@ defmodule Accountant do
     get_two([first | rest])
   end
 end
-```s
+```
 
-## Elixir Superpowers Make for Squeaky Clean, Highly Performant Code
-pattern matching function heads, guard clauses and custom guard clauses paired with recursion allows us to implement control flow in a way that is sane and readable--no nested if conditions.
+## Elixir Encourages Efficient and Eloquent Code
+By using Elixir's pattern matching against our list of numbers, we were able to write efficient code that avoided the time complexity of nested iterations.
 
-pattern matching lists allows us to write highly performant code that avoids the O(N2) time complexity trap.
+By using that same pattern matching feature, paired with guard clauses and recursion, we were able to implement complex logic and control flow in a way that is eloquent. The code speaks for itself by being readable and easy to reason about. No messy, nested `if` conditions to deal with.
+
+This Advent of Code challenge really shows off some of Elixir's simplest, but most powerful features.
