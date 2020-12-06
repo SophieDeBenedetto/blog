@@ -23,7 +23,7 @@ The Day 1 Advent of Code prompt can be simply stated as:
 
 > `1721 + 299 == 2020`, and `1721 * 299 = 514579`.
 
-> So, your code should return 514579
+> So, your code should return `514579`
 
 ## Attempt 1: Lots of Iterating
 Before writing any code, I attempted to conceptualize my approach. The first conceptualization that jumped out at me was heavily reliant on iteration and went something like this:
@@ -51,11 +51,11 @@ So, the number of operations your code has to do will grow exponentially for eac
 
 We'll use recursion and pattern matching to avoid the need to perform 💸 💸 💸 expensive nested iterations 💸 💸 💸. Keep reading to find out how!
 
-## Attempt 2: Pattern Matching, Recursion and Guard Clauses
+## Attempt 2: Pattern Matching and Recursion
 Once I recognized the time complexity of the "lots of iterating" approach, I knew I needed to cut down on iterations. Luckily, Elixir provides us a way to pull elements from a list without iterating over that list--pattern matching.
 
 ## Efficient Code with Pattern Matching
-First, let's walk through how Elixir's pattern matching can be applied to list elements such that we can compare all the items in our list _without_ iterating. This will give us the ability to solve our Advent of Code problem with code that is not overly time-complex.
+First, let's walk through how Elixir's pattern matching can be applied to list elements such that we can perform our "check if sum is `2020`" statement against _all_ of the list elements,  _without_ iterating. This will give us the ability to solve our Advent of Code problem with code that is not overly time-complex.
 
 ### Pattern Matching List Elements: The Concept
 
