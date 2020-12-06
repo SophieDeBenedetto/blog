@@ -52,7 +52,7 @@ So, the number of operations your code has to do will grow exponentially for eac
 We'll use recursion and pattern matching to avoid the need to perform 💸 💸 💸 expensive nested iterations 💸 💸 💸. Keep reading to find out how!
 
 ## Attempt 2: Pattern Matching and Recursion
-Once I recognized the time complexity of the "lots of iterating" approach, I knew I needed to cut down on iterations. Luckily, Elixir provides us a way to pull elements from a list without iterating over that list--pattern matching.
+Once I recognized the time complexity of the "lots of iterating" approach, I knew I needed to cut down on iterations. Luckily, Elixir provides us a way to pull elements from a list without iterating over that list--pattern matching. In the next section, we'll use pattern matching and recursion to peel off list elements and perform out "sum to `2020`" check on them.
 
 ## Efficient Code with Pattern Matching
 First, let's walk through how Elixir's pattern matching can be applied to list elements such that we can perform our "check if sum is `2020`" statement against _all_ of the list elements,  _without_ iterating. This will give us the ability to solve our Advent of Code problem with code that is not overly time-complex.
@@ -114,7 +114,7 @@ iex> second
 366
 ```
 
-From here, we repeat the process. Does `first + second == 2020`? If so, great! We're done. If not...construct a new list using the same first element, and the list remainder stored in rest.
+From here, we repeat the process. Does `first + second == 2020`? If so, great! We're done. If not...construct a new list using the same first element, and the list remainder stored in `rest`.
 
 Eventually, if the first element cannot be added to any other list element to get the sum of `2020`, then we end up with a list that contains only one element. We'll have cut out all the other elements until only the first element remains.
 
@@ -126,7 +126,16 @@ In other words, if our original list read `[979, 1721, 366, 299, 675, 1456]`, an
 [1721, 366, 299, 675, 1456]
 ```
 
-So, using _that_ list, we can simply repeat the process described above.
+We already matched a variable, `tail` to the original list's tail above, like this:
+
+```elixir
+ iex> list = [979, 1721, 366, 299, 675, 1456]
+[979, 1721, 366, 299, 675, 1456]
+iex> tail
+[1721, 366, 299, 675, 1456]
+```
+
+So, using the list stored in the `tail` variable, we can simply repeat the process described above.
 
 Now that we have a basic understanding of what we need to do, let's write some code.
 
@@ -152,7 +161,7 @@ defmodule Accountant do
 end
 ```
 
-The function head will use pattern matching to pull out the tail of the list and save it for later. Then it will pass the list to a helper function that is responsible for stepping through the process we described above. Let's revisit that process now by taking a closer look at `get_two/1`.
+The function head will use pattern matching to pull out the tail of the list and save it for later in a variable, `tail`. Then it will pass the list to a helper function that is responsible for stepping through the process we described above. Let's revisit that process now by taking a closer look at `get_two/1`.
 
 ### Pattern Matching Function Heads
 We'll implement a few versions of the `get_two/1` function that use pattern matching in the function head to determine how to behave. We'll also see recursion make a guest appearance. Let's take a look!
@@ -181,9 +190,9 @@ defp get_two([first | [second | _rest]]) when first + second == @sum do
 end
 ```
 
-If the first and second list element do sum to `2020`, the function will return the product of the two numbers.
+If the first and second list element do sum to `2020`, then the function body will execute and return the product of the two numbers.
 
-If the first and second list element do _not_ sum to `2020`, i.e. if our guard clause does not evaluate to true, then we hit the next version of the function implementation:
+If the first and second list element do _not_ sum to `2020`, i.e. if our guard clause does not evaluate to `true`, then we hit the next version of the function implementation:
 
 ```elixir
 defp get_two([first | [_second | rest]]) do
@@ -191,13 +200,13 @@ defp get_two([first | [_second | rest]]) do
 end
 ```
 
-Here, we build a _new_ list constructed from the first list element and the _remainder_ of that list, minus the second element. That new list is given as an argument to a recursive call to `get_two/1`. This will continue until we either hit the guard clause and return the product of the two elements. Or, until we have removed every element after the first one, resulting in a list with a length of `1`. In that case, we will return `nil`.
+Here, we build a _new_ list constructed from the first list element and the _remainder_ of that list, minus the second element. That new list is given as an argument to a recursive call to `get_two/1`. This will continue until we either hit the guard clause and return the product of the two elements. Or, until we have removed every element after the first one, resulting in a list with a length of `1`. In that case, we will return `nil`:
 
 ```elixir
 defp get_two(list) when length(list) == 1, do: nil
 ```
 
-So, we have a function that, when invoked with a given list, will call itself recursively until it returns a product of the first list element and some other list element, or `nil`.
+So, we have a function that, when invoked with a given list, will call itself recursively until it finds two elements that sum to `2020`--in which case it returns their product--or until there is only one list element left--in which case it returns `nil`.
 
 By calling `get_two/1` with the list `[979, 1721, 366, 299, 675, 1456]`, we will have successfully checked to see if `979` plus any other number in the list equals `2020`.
 
@@ -218,7 +227,7 @@ defmodule Accountant do
 end
 ```
 
-If the first `get_two/1` invocation does _not_ return a number and does return `nil`, we need to start the whole process again, this time with the tail end of our original list.
+If the first `get_two/1` invocation does _not_ return a number and does return `nil`, we need to start the whole process again, this time with the _tail end_ of our original list.
 
 
 ```elixir
@@ -236,7 +245,7 @@ defmodule Accountant do
 end
 ```
 
-This will restart the process, this time with a list that reads: `1721, 366, 299, 675, 1456]`. Once again, our code will try to sum each number with the first list element, this time `1721`. If it returns some product, then we're done! If not, we'll keep invoking `product_of_equals_twenty_twenty` with the next list tail, and the next, until we find what we're looking for.
+This will restart the process, this time with a list that reads: `[1721, 366, 299, 675, 1456]`. Once again, our code will try to sum each number with the first list element, this time `1721`. If it returns some product, then we're done! If not, we'll keep invoking `product_of_equals_twenty_twenty/1` with the next list tail, and the next, until we find what we're looking for.
 
 To wrap up this code, we'll add a function head for `product_of_equals_twenty_twenty/1` that can handle being invoked with an empty list--that is what will happen if our list does not contain any two numbers that equal `2020` and we continue to invoke `product_of_equals_twenty_twenty/1` until we have a tail that is empty.
 
@@ -286,10 +295,12 @@ end
 
 Our code works, and it's highly efficient. We're never iterating over the list, never mind iterating over it in a nested fashion. Instead, we are recursively pulling the first and second elements off of a list, and shrinking the list each step of the way.
 
-This looks pretty clean, but I think we can do even better. Anytime I see an `if` condition in Elixir, I wonder if I can replace it with recursion and pattern matching. Elixir allows us to combine recursion and pattern matching into an elegant solution for control flow. Could we implement `product_of_equals_twenty_twenty` such that it can handle the case of a "found product"? Let's give it a shot!
+This looks pretty clean, but I think we can do even better. Anytime I see an `if` condition in Elixir, I wonder if I can replace it with recursion and pattern matching. Elixir allows us to combine recursion and pattern matching into an elegant solution for control flow. Could we implement `product_of_equals_twenty_twenty/1` such that it can handle the case of a "found product"? Let's give it a shot!
 
 ## Clean Control Flow with Pattern Matching and Recursion
-We'll take a similar approach here to the one we used with our `get_two/1` implementation. A set of function heads will use pattern matching to determine how to behave. One such function will leverage recursion to continue code flow, while other function heads will determine when the code will stop executing and return. In this way, Elixir pairs recursion and pattern matching to implement control flow--without `if` conditions or `while` loops. Let's take a look.
+We'll take a similar approach here to the one we used with our `get_two/1` implementation. A set of function heads will use pattern matching to determine how to behave. One such function will leverage recursion to continue code flow, while other function heads will determine when the code will stop executing and return. In this way, Elixir pairs recursion and pattern matching to implement control flow--without `if` conditions or `while` loops.
+
+Let's take a look.
 
 ```elixir
 defmodule Accountant do
@@ -329,7 +340,7 @@ If `get_two/1` returns a product that is not `nil`, then we'll find ourselves in
 def product_of_equals_twenty_twenty(_list, product) when product != nil, do: product
 ```
 
-In which case, we break out of our recursive function calls, and the code stops executing.
+In which case, we break out of our recursive function calls, stop code execution, and return the product.
 
 Let's step through this code in detail.
 
@@ -394,7 +405,7 @@ defmodule Accountant do
 end
 ```
 
-In just about a dozen lines of code, we've implement an efficient, iteration-free solution--all thanks to the beauty of Elixir's pattern matching. By pattern matching list elements, we were able to avoid expensive iterations. By using pattern matching in function heads, along with recursion, we were able to implement control flow that didn't rely on `if` conditions or `while` loops.
+In just about a dozen lines of code, we've implemented an efficient, iteration-free solution--all thanks to the beauty of Elixir's pattern matching. By pattern matching list elements, we were able to avoid expensive iterations. By using pattern matching in function heads, along with recursion, we were able to implement control flow that didn't rely on `if` conditions or `while` loops.
 
 Before we go, we'll do just a bit more refactoring for readability with the help of custom guard clauses.
 
