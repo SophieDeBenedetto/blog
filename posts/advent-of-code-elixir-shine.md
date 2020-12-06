@@ -417,9 +417,9 @@ Guard clauses allows us to apply more complex checks to pattern matching functio
 defp get_two(list) when length(list) == 1, do: nil
 ```
 
-Here, we've implement a version of the `get_two/1` function that will execute _if_ the length of the provided `list` argument is equal to `1`.
+Here, we've implemented a version of the `get_two/1` function that will execute _if_ the length of the provided `list` argument is equal to `1`.
 
-Guard clauses give us even more fine-grained control over which code to execute under which conditions. This is yet another way that we can implement complex control flow without verbose and hard-to-reason-about `if` and nested `if` conditions.
+Guard clauses give us even more fine-grained control over which code to execute under which conditions. This is yet another way that we can handle complex control flow without verbose and hard-to-reason-about `if` and nested `if` conditions.
 
 Only a certain set of expressions are allowed for usage in guard clauses, see docs [here](https://hexdocs.pm/elixir/guards.html#list-of-allowed-expressions). But, we can define custom guard clauses to wrap up more complex guard logic. The guard clause we wrote to check if two numbers sum to `2020` is a great candidate for a custom guard clause. By wrapping up that logic in a custom guard clause, we can name the concept to make it easier to read and reason about.
 
@@ -470,6 +470,6 @@ end
 ## Elixir Encourages Efficient and Eloquent Code
 By using Elixir's pattern matching against our list of numbers, we were able to write efficient code that avoided the time complexity of expensive nested iterations.
 
-By using that same pattern matching feature, paired with guard clauses and recursion, we were able to implement complex logic and control flow in a way that is 🧼 clean 🧼 and 🗣 eloquent 🗣. The code speaks for itself by being readable and easy to reason about. No messy, nested `if` conditions to deal with.
+By using that same pattern matching feature, paired with guard clauses and recursion, we were able to implement control flow in a way that is 🧼 clean 🧼 and 🗣 eloquent 🗣. The code speaks for itself by being readable and easy to reason about. No messy, nested `if` conditions to deal with.
 
 This Advent of Code challenge really shows off some of Elixir's simplest, but most powerful features.
