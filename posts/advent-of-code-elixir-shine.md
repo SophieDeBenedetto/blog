@@ -8,19 +8,20 @@ While tackling the Day 1 challenge from this year's Advent of Code in Elixir, I 
 
 You can complete Advent of Code challenges in any language and submit your answers to "win" stars :star: :star: :star:
 
-It's a fun way to play around with a new language that you're just starting to learn or to refine your skills in a language that you're familiar with.
+It's a fun way to play around with a new language that you're just starting to learn or to refine your skills in a language that you're already familiar with.
 
 After being ~pestered~ kindly reminded about it by [someone who is definitely not annoying](https://hostiledeveloper.com/), I decided to try out the Day 1 puzzle in Elixir.
 
-I had a lot of fun putting my solution together and, unsurprisingly, I found that Elixir's tooling allowed me to implement even complex logic and control flow in a way that was remarkably concise and efficient with regards to time complexity. Keep reading to see how to leverage pattern matching, recursion and custom guard clauses to write some super clean and extremely elegant Elixir code. :soap: :star: :soap:
+I had a lot of fun putting my solution together and, unsurprisingly, I found that Elixir's features allowed me to implement even complex logic and control flow in a way that was remarkably concise, as well as efficient with regards to time complexity. Keep reading to see how to leverage pattern matching, recursion and custom guard clauses to write some super clean and extremely elegant Elixir code. :soap: :star: :soap:
 
 ## The Prompt
 The Day 1 Advent of Code prompt can be simply stated as:
 
 > Find the two elements in a given list that sum to 2020 and return the product of those two numbers.
 
-> For example, of the following list: [979, 1721, 366, 299, 675, 1456],
-> 1721 + 299 = 2020, and 1721 * 299 = 514579.
+> For example, of the following list: `[979, 1721, 366, 299, 675, 1456]`,
+
+> `1721 + 299 == 2020`, and `1721 * 299 = 514579`.
 
 > So, your code should return 514579
 
