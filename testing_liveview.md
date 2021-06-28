@@ -2,15 +2,9 @@
 
 ## Introducing LiveView's Powerful Testing Tools
 
-If you've worked with LiveView, you've already experienced how productive you and your team can be with a framework that let's you build interactive UIs while keeping your brain firmly focused on the server-side. Testing LiveView is no different--you can exercise the full functionality of your live views with pure Elixir tests written in ExUnit. So your tests are fast, concurrent, and continue to keep your focus firmly on server-side code. In this post, we'll explore some more of what makes LiveView testing so powerful, understand the principles for approaching live view tests, write some unit and integration tests, and even test a distributed, real-time update feature in LiveView. Let's get going!
+If you've worked with LiveView, you've already experienced how productive you and your team can be with a framework that let's you build interactive UIs while keeping your brain firmly focused on the server-side. Testing LiveView is no different--you can exercise the full functionality of your live views with pure Elixir tests written in ExUnit with the help of the `LiveViewTest` module. So your tests are fast, concurrent, and continue to keep your focus firmly on server-side code. LiveView's testing framework empowers you to quickly write robust and comprehensive tests that are highly stable. With a high degree of test coverage firmly in hand, you and your team will be able to move quickly and confidently when building out LiveView applications
 
-## How LiveView Enables Comprehensive Testing
-
-Testing for live views is easier than testing for most web frameworks for several reasons. First, by composing your live views with the help of nice, neat, single-purpose reducer functions (more on that later), you're providing yourself with lots of opportunities for robust unit tests. LiveView's test tooling makes a big difference too. The `LiveViewTest` module offers a set of convenience functions to exercise live views without the need for an external JavaScript testing framework. You'll use `LiveViewTest` directly in your `ExUnit` tests, which means that all of your live view tests can be written in Elixir. As a result, your live view tests will be fast, concurrent, and stable, which differs markedly from the experience of working with headless browser testing tools that introduce new external dependencies and can make consistency difficult to achieve.
-
-LiveView's testing framework empowers you to quickly write robust and comprehensive tests that are highly stable. With a high degree of test coverage firmly in hand, you and your team will be able to move quickly and confidently when building out LiveView applications.
-
-Now that we have a sense of why testing in LiveView is so powerful, let's talk about some of the guiding principles we can use to approach writing LiveView tests.
+In this post, we'll explore some more of what makes LiveView testing so powerful, understand the principles for approaching live view tests, write some unit and integration tests, and even test a distributed, real-time update feature in LiveView. Let's get going!
 
 ## Principles for Testing LiveView
 The basic principles for testing LiveView don't differ a whole lot from testing in other languages and frameworks. Any given test has three steps:
@@ -27,11 +21,11 @@ Integration tests, on the other hand, validate the interactions between differen
 
 You might be surprised to hear that none of the tests we'll write today will be testing JavaScript. This is because the LiveView framework is specifically designed to handle JavaScript for us, so we don't have to. For the average live view that _doesn't_ implement any custom JavaScript, there's not need to test JS code or write any tests that use JavaScript. We can trust that the JS in the LiveView framework itself works as expected.
 
-We're just about ready to start writing our very first LiveView test, and we'll start with a unit test. It's a good idea to start with unit test coverage before moving on to integration testing. By exercising individual functions in unit tests with many different inputs, you can exhaustively cover corner cases. This lets you write a smaller number of integration tests to confirm that the complex interactions of the system work as you expect them to.
+We're just about ready to start writing our very first LiveView test, and we'll start with some unit tests. It's a good idea to start with unit test coverage before moving on to integration testing. By exercising individual functions in unit tests with many different inputs, you can exhaustively cover corner cases. This lets you write a smaller number of integration tests to confirm that the complex interactions of the system work as you expect them to.
 
 So, to recap, we can apply the following principles to LiveView testing:
 
-* Following the three step procedure of setting up preconditions, providing a stimulus and validating expectations.
+* Follow the three step procedure of setting up preconditions, providing a stimulus and validating expectations.
 * Write both unit and integration tests.
 * Don't test JavaScript you didn't write.
 * Start by writing comprehensive unit tests.
@@ -39,10 +33,10 @@ So, to recap, we can apply the following principles to LiveView testing:
 Alright, with these principles in hand, we're ready to start testing.
 
 ## Unit Testing LiveView
-In this section, we'll use our three-step testing procedure to write a few unit tests for the behavior of a LiveView component. Along the way, we'll see how composing our LiveView component out of single-purpose reducer functions helps make our code easy to test. Let's get started.
+In this section, we'll use our three-step testing procedure to write a few unit tests for the behavior of a LiveView component. Along the way, we'll see how composing our LiveView component out of single-purpose reducer functions helps make our code easy to test.
 
 ### The Feature
-The testing examples that we'll be looking at in this post are drawn from the Testing chapter in my book, Programming LiveView, co-authored with Bruce Tate. Check it out for an even deeper dive into LiveView testing and so much more.
+The testing examples that we'll be looking at in this post are drawn from the "Test Your Live Views" chapter in my book, [Programming LiveView](https://pragprog.com/titles/liveview/programming-phoenix-liveview/), co-authored with Bruce Tate. Check it out for an even deeper dive into LiveView testing and so much more.
 
 In this example, we have a an online game store that allows users to browse and review products. We provide our users with a survey that asks them for some basic demographic input, along with star ratings of each game. We have a LiveView component, `SurveyResultsLive`, that displays the results of this survey as a chart that graphs the games and their star ratings, on a scale of 1 to 5. Here's a look at the component UI:
 
@@ -74,7 +68,7 @@ The details of most of these reducer functions are not important, but we will ta
 end
 ```
 
-Our reducer is pretty simple, it adds a key `:age_group_filter` to the socket and sets it to the default value of "all". However, we need a second version of this function that we can call in the `handle_event/3` that gets invoked when the user selects an age group from the drop down. This version of the function should take the selected age group from the event and set _that_ as the value in the `:age_group_filter` key of socket assigns, like this:
+Our reducer is pretty simple, it adds a key `:age_group_filter` to the socket and sets it to the default value of "all". However, we need a second version of this function that we can call in the `handle_event/3` that gets invoked when the user selects an age group from the drop down menu. This version of the function should take the selected age group from the event and set _that_ as the value in the `:age_group_filter` key of socket assigns, like this:
 
 ```elixir
 def handle_event("age_group_filter", %{"age_group_filter" => age_group_filter}, socket) do
@@ -192,7 +186,7 @@ test "when age group filter is provided", %{socket: socket} do
 end
 ```
 
-Simple enough. Let's tackle a more complex scenario. Recall that our `update/2` and `handle_event/3` functions both invoke `assign_age_group_filter` and then pipe the resulting socket into a call to the `assign_products_with_average_ratings/1` function. We won't worry about the details of this function for now, just know that this is the function that queries for the product ratings given the filter info that is set in socket assigns. The composable nature of our single-purpose reducer functions let's us write multi-stage unit tests that exercise the behavior of the reducer pipeline as a whole. Let's write a test now that validates the product ratings assignment under different filter conditions.
+Simple enough. Let's tackle a more complex scenario. Recall that our `update/2` and `handle_event/3` functions both invoke `assign_age_group_filter` and then pipe the resulting socket into a call to the `assign_products_with_average_ratings/1` function. We won't worry about the details of this function for now, just know that it queries for the product ratings given the filter info that is set in socket assigns. The composable nature of our single-purpose reducer functions let's us write multi-stage unit tests that exercise the behavior of the reducer pipeline as a whole. Let's write a test that validates the product ratings assignment under different filter conditions.
 
 Start by defining a new test and providing it with the `socket` from the setup function, like this:
 
@@ -339,7 +333,7 @@ defmodule GamestoreWeb.AdminDashboardLiveTest do
 end
 ```
 
-Let's break this down. First, our test module uses the `GamestoreWeb.ConnCase` behavior. This let's us route to live views using the test connection by giving our tests access to a context map with a key of `:conn` pointing to a value of the test connection. Then, we import the `LiveViewTest` module to give us access to LiveView testing functions. Lastly, we define some fixtures we will use to create our test data. The nitty-gritty details of those fixture functions aren't import. Just understand that they create the database records we need in order to log in users and render the admin dashboard page and display a chart with product ratings submitted by users.
+Let's break this down. First, our test module uses the `GamestoreWeb.ConnCase` behavior. This let's us route to live views using the test connection by giving our tests access to a context map with a key of `:conn` pointing to a value of the test connection. Then, we import the `LiveViewTest` module to give us access to LiveView testing functions. Lastly, we define some fixtures we will use to create our test data. The nitty-gritty details of those fixture functions aren't import. Just understand that they create the database records we need in order to log in users and render the admin dashboard page to display a chart with product ratings.
 
 Now that our module is set up, we'll add a `describe` block to encapsulate the feature we're testing---the survey results chart functionality:
 
@@ -380,7 +374,7 @@ Before we write the body of our test, let's make a plan. In order to test this f
 * Find the age group filter drop down menu and select an item from it
 * Assert that the re-rendered survey results chart has the correct data and markup
 
-This is the pattern you'll apply to testing live view features from here on out. Run the live view, target some interaction, test the rendered result. This pattern should sound familiar--it neatly matches up to the three-step testing process we've been using so far:
+This is the pattern you'll always apply to testing live view features. Run the live view, simulate some interaction, validate the rendered result. This pattern should sound familiar--it neatly matches up to the three-step testing process we've been using so far:
 
 - Set up preconditions
 - Provide input
@@ -528,5 +522,7 @@ And that's it! We established our initial state by mounting and rendering the li
 
 ## Write Robust and Comprehensive LiveView Tests
 
-LiveView empowers you to write robust and comprehensive tests without a big investment of effort. By comprising your individual live views out of reuseable, single-purpose reducer functions, you provide lots of opportunities for deep unit testing that can cover lots of scenarios and edge cases quickly. You can even use the same elegant reducer pipelines in your tests to verify the behavior of those pipelines. For integration tests, LiveView provides all the functionality you need to exercise the full range of LiveView interactions with the `LiveViewTest` module. We can use the functions in that model to apply the same three-step process that guides all of our tests, making it quick and easy to spin up tests for even complex LiveView interactions. Finally, thanks to the fact that LiveView is built on top of OTP, and a live view is really nothing more than a process, we can even easily test interactions _between_ live views by relying on simple message passing. All of this together makes it possible for your and your team to guarantee comprehensive test coverage for your LiveView applications, ensuring that you can move quickly while maintaining bug-free code. The powerful set of tools in your LiveView testing kit is just one of the many reasons that teams are so productive in LiveView.
+LiveView empowers you to write robust and comprehensive tests without a big investment of effort. By comprising your individual live views out of reuseable, single-purpose reducer functions, you provide lots of opportunities for deep unit testing that can cover lots of scenarios and edge cases quickly. You can even use the same elegant reducer pipelines in your tests to verify the behavior of those pipelines. For integration tests, LiveView provides all the functionality you need to exercise the full range of LiveView interactions with the `LiveViewTest` module. We can use the functions in that model to apply the same three-step process that guides all of our tests, making it quick and easy to spin up tests for even complex LiveView interactions. Finally, thanks to the fact that LiveView is built on top of OTP, and a live view is really nothing more than a process, we can even easily test interactions _between_ live views by relying on simple message passing.
+
+All of this together makes it possible for your and your team to guarantee comprehensive test coverage for your LiveView applications, ensuring that you can move quickly while maintaining bug-free code. The powerful set of tools in your LiveView testing kit is just one of the many reasons that teams are so productive in LiveView.
 
